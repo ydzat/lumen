@@ -84,6 +84,9 @@ __pycache__/
 .venv/
 venv/
 
+# Design docs (internal)
+docs/
+
 # Misc
 *.bak
 *.tmp
