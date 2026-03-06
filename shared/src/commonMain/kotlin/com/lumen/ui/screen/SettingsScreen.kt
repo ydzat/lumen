@@ -20,10 +20,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -42,7 +42,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.lumen.companion.agent.ChatResult
 import com.lumen.companion.agent.LumenAgent
-import com.lumen.core.config.AppConfig
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.config.LlmConfig
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +76,13 @@ fun SettingsScreen() {
     var apiKeyVisible by remember { mutableStateOf(false) }
     var isTesting by remember { mutableStateOf(false) }
     var providerExpanded by remember { mutableStateOf(false) }
+
+    fun currentLlmConfig() = LlmConfig(
+        provider = provider,
+        model = model,
+        apiKey = apiKey,
+        apiBase = apiBase,
+    )
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -178,14 +184,7 @@ fun SettingsScreen() {
             ) {
                 Button(
                     onClick = {
-                        val updatedConfig = config.copy(
-                            llm = LlmConfig(
-                                provider = provider,
-                                model = model,
-                                apiKey = apiKey,
-                                apiBase = apiBase,
-                            ),
-                        )
+                        val updatedConfig = config.copy(llm = currentLlmConfig())
                         configStore.save(updatedConfig)
                         scope.launch {
                             snackbarHostState.showSnackbar("Settings saved")
@@ -199,13 +198,7 @@ fun SettingsScreen() {
                     onClick = {
                         isTesting = true
                         scope.launch {
-                            val testConfig = LlmConfig(
-                                provider = provider,
-                                model = model,
-                                apiKey = apiKey,
-                                apiBase = apiBase,
-                            )
-                            val agent = LumenAgent(testConfig)
+                            val agent = LumenAgent(currentLlmConfig())
                             try {
                                 val result = withContext(Dispatchers.Default) {
                                     agent.chat("Hello")
