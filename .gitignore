@@ -87,8 +87,11 @@ venv/
 # Design docs (internal)
 docs/
 
+# Claude Code
+CLAUDE.md
+.claude/
+
 # Misc
 *.bak
 *.tmp
 *.temp
-.claude/
