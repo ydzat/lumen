@@ -9,6 +9,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LumenDatabaseTest {
@@ -62,10 +64,10 @@ class LumenDatabaseTest {
     fun deleteSource() {
         val source = Source(name = "To Delete", url = "https://example.com", type = "rss")
         val id = db.sourceBox.put(source)
-        assertTrue(db.sourceBox.get(id) != null)
+        assertNotNull(db.sourceBox.get(id))
 
         db.sourceBox.remove(id)
-        assertEquals(null, db.sourceBox.get(id))
+        assertNull(db.sourceBox.get(id))
     }
 
     @Test
