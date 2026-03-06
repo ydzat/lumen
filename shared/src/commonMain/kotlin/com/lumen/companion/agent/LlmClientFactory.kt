@@ -32,11 +32,14 @@ object LlmClientFactory {
                 AnthropicClientSettings(),
                 httpClient
             )
-            else -> OpenAILLMClient(
-                config.apiKey,
-                OpenAIClientSettings(config.apiBase),
-                httpClient
-            )
+            else -> {
+                require(config.apiBase.isNotBlank()) { "apiBase is required for custom provider '${config.provider}'" }
+                OpenAILLMClient(
+                    config.apiKey,
+                    OpenAIClientSettings(config.apiBase),
+                    httpClient
+                )
+            }
         }
     }
 
