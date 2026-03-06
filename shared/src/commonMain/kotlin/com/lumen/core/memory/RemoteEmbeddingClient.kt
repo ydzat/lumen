@@ -8,18 +8,18 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.io.Closeable
 
 class RemoteEmbeddingClient(
     private val config: LlmConfig,
     private val httpClient: HttpClient = createDefaultHttpClient(),
-) : EmbeddingClient, Closeable {
+) : EmbeddingClient {
 
-    private val apiBase: String = resolveApiBase(config)
+    private val apiBase: String = resolveEmbeddingApiBase(config)
 
     override suspend fun embed(text: String): FloatArray {
         return embedBatch(listOf(text)).first()
@@ -30,7 +30,7 @@ class RemoteEmbeddingClient(
 
         val response = httpClient.post("$apiBase/v1/embeddings") {
             contentType(ContentType.Application.Json)
-            header("Authorization", "Bearer ${config.apiKey}")
+            header(HttpHeaders.Authorization, "Bearer ${config.apiKey}")
             setBody(EmbeddingRequest(model = config.embeddingModel, input = texts))
         }
 
@@ -40,25 +40,19 @@ class RemoteEmbeddingClient(
             .map { it.embedding.toFloatArray() }
     }
 
-    override fun close() {
+    fun close() {
         httpClient.close()
     }
 
     companion object {
-        private fun resolveApiBase(config: LlmConfig): String {
-            if (config.apiBase.isNotBlank()) return config.apiBase.trimEnd('/')
-
-            return when (config.provider) {
-                "deepseek" -> "https://api.deepseek.com"
-                "openai" -> "https://api.openai.com"
-                "anthropic" -> throw UnsupportedOperationException(
+        private fun resolveEmbeddingApiBase(config: LlmConfig): String {
+            if (config.provider == "anthropic" && config.apiBase.isBlank()) {
+                throw UnsupportedOperationException(
                     "Anthropic does not provide an embedding API. " +
                         "Please configure a different provider or set a custom API base URL."
                 )
-                else -> throw IllegalArgumentException(
-                    "API base URL is required for provider '${config.provider}'"
-                )
             }
+            return config.resolveApiBase()
         }
 
         private fun createDefaultHttpClient(): HttpClient {
