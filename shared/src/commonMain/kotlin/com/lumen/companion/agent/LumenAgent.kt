@@ -1,9 +1,7 @@
 package com.lumen.companion.agent
 
 import ai.koog.prompt.dsl.Prompt
-import ai.koog.prompt.executor.clients.deepseek.DeepSeekClientSettings
-import ai.koog.prompt.executor.clients.deepseek.DeepSeekLLMClient
-import ai.koog.prompt.executor.clients.deepseek.DeepSeekModels
+import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.params.LLMParams
@@ -13,12 +11,8 @@ import io.ktor.client.HttpClient
 class LumenAgent(private val config: LlmConfig) {
 
     private val httpClient = HttpClient()
-
-    private val llmClient = DeepSeekLLMClient(
-        config.apiKey,
-        DeepSeekClientSettings(),
-        httpClient
-    )
+    private val llmClient: LLMClient = LlmClientFactory.createClient(config, httpClient)
+    private val model = LlmClientFactory.resolveModel(config)
 
     suspend fun chat(message: String): ChatResult {
         if (config.apiKey.isBlank()) {
@@ -32,7 +26,7 @@ class LumenAgent(private val config: LlmConfig) {
         )
 
         return try {
-            val responses = llmClient.execute(prompt, DeepSeekModels.DeepSeekChat, emptyList())
+            val responses = llmClient.execute(prompt, model, emptyList())
             val responseText = responses.firstOrNull()?.content ?: ""
             ChatResult.Success(responseText)
         } catch (e: Exception) {
@@ -40,8 +34,8 @@ class LumenAgent(private val config: LlmConfig) {
                 e.message?.contains("401") == true -> "Invalid API key"
                 e.message?.contains("403") == true -> "Access denied"
                 e.message?.contains("429") == true -> "Rate limited, please try again later"
-                e.cause is java.net.UnknownHostException -> "Network unavailable"
-                e.cause is java.net.ConnectException -> "Cannot connect to API server"
+                e.cause?.let { it::class.simpleName } == "UnknownHostException" -> "Network unavailable"
+                e.cause?.let { it::class.simpleName } == "ConnectException" -> "Cannot connect to API server"
                 else -> e.message ?: "Unknown error"
             }
             ChatResult.Error(errorMessage, e)
