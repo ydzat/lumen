@@ -18,10 +18,7 @@ import com.lumen.core.di.companionModule
 import com.lumen.core.di.platformModule
 import com.lumen.core.di.researchModule
 import com.lumen.ui.navigation.Tab
-import com.lumen.ui.screen.ArticlesScreen
-import com.lumen.ui.screen.ChatScreen
-import com.lumen.ui.screen.HomeScreen
-import com.lumen.ui.screen.SettingsScreen
+import com.lumen.ui.navigation.TabContent
 import com.lumen.ui.theme.LumenTheme
 import org.koin.core.context.startKoin
 
@@ -48,12 +45,7 @@ fun main() {
                         }
                     }
                     Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                        when (selectedTab) {
-                            Tab.Home -> HomeScreen()
-                            Tab.Articles -> ArticlesScreen()
-                            Tab.Chat -> ChatScreen()
-                            Tab.Settings -> SettingsScreen()
-                        }
+                        TabContent(selectedTab)
                     }
                 }
             }

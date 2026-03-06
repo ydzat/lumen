@@ -17,10 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.lumen.ui.navigation.Tab
-import com.lumen.ui.screen.ArticlesScreen
-import com.lumen.ui.screen.ChatScreen
-import com.lumen.ui.screen.HomeScreen
-import com.lumen.ui.screen.SettingsScreen
+import com.lumen.ui.navigation.TabContent
 import com.lumen.ui.theme.LumenTheme
 
 class MainActivity : ComponentActivity() {
@@ -45,12 +42,7 @@ class MainActivity : ComponentActivity() {
                     },
                 ) { padding ->
                     Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                        when (selectedTab) {
-                            Tab.Home -> HomeScreen()
-                            Tab.Articles -> ArticlesScreen()
-                            Tab.Chat -> ChatScreen()
-                            Tab.Settings -> SettingsScreen()
-                        }
+                        TabContent(selectedTab)
                     }
                 }
             }
