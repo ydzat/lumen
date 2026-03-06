@@ -7,5 +7,6 @@ data class LlmConfig(
     val provider: String = "deepseek",
     val model: String = "deepseek-chat",
     val apiKey: String = "",
-    val apiBase: String = ""
+    val apiBase: String = "",
+    val embeddingModel: String = "text-embedding-3-small"
 )
