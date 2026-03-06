@@ -1,0 +1,140 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:5058639601936654895",
+      "lastPropertyId": "13:875518598519683171",
+      "name": "MemoryEntry",
+      "properties": [
+        {
+          "id": "1:2053576415494612112",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7646972698673919649",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "3:5066359925847167460",
+          "name": "category",
+          "type": 9
+        },
+        {
+          "id": "4:1008107271881155690",
+          "name": "source",
+          "type": 9
+        },
+        {
+          "id": "5:6901201238745743223",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "6:80667454690768589",
+          "name": "updatedAt",
+          "type": 6
+        },
+        {
+          "id": "7:8617985093341123644",
+          "name": "originalTimestamp",
+          "type": 9
+        },
+        {
+          "id": "8:6081410009662688561",
+          "name": "embedding",
+          "indexId": "1:7131143336178102071",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "9:6659059462644339104",
+          "name": "keywords",
+          "type": 9
+        },
+        {
+          "id": "10:5102832094508892069",
+          "name": "importance",
+          "type": 7
+        },
+        {
+          "id": "11:6436902098720229956",
+          "name": "accessCount",
+          "type": 5
+        },
+        {
+          "id": "12:1379546046453933427",
+          "name": "lastAccessedAt",
+          "type": 6
+        },
+        {
+          "id": "13:875518598519683171",
+          "name": "mergedFrom",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:4653137260564483636",
+      "lastPropertyId": "7:2059055193395185650",
+      "name": "Source",
+      "properties": [
+        {
+          "id": "1:2546947437389648082",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4056873870404786470",
+          "name": "name",
+          "indexId": "2:6271851765822236156",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:7010900921451758531",
+          "name": "url",
+          "type": 9
+        },
+        {
+          "id": "4:7697204870753797",
+          "name": "type",
+          "type": 9
+        },
+        {
+          "id": "5:8548859774784867749",
+          "name": "enabled",
+          "type": 1
+        },
+        {
+          "id": "6:5484413928422902728",
+          "name": "lastFetchedAt",
+          "type": 6
+        },
+        {
+          "id": "7:2059055193395185650",
+          "name": "createdAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "2:4653137260564483636",
+  "lastIndexId": "2:6271851765822236156",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}
