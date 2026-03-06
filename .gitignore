@@ -36,9 +36,11 @@ build/
 /shared/build/
 
 # ObjectBox
-objectbox-models/
 *.mdb
 *.lck
+libobjectbox-jni-*.so
+libobjectbox-jni-*.dylib
+objectbox-jni-*.dll
 
 # OS files
 .DS_Store

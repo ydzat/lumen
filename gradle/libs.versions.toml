@@ -16,6 +16,9 @@ koog-agents = { module = "ai.koog:koog-agents", version.ref = "koog" }
 
 # ObjectBox
 objectbox-kotlin = { module = "io.objectbox:objectbox-kotlin", version.ref = "objectbox" }
+objectbox-linux = { module = "io.objectbox:objectbox-linux", version.ref = "objectbox" }
+objectbox-macos = { module = "io.objectbox:objectbox-macos", version.ref = "objectbox" }
+objectbox-windows = { module = "io.objectbox:objectbox-windows", version.ref = "objectbox" }
 
 # Ktor Client
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -57,3 +60,4 @@ compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-m
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+objectbox = { id = "io.objectbox", version.ref = "objectbox" }
