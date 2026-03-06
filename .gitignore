@@ -1,0 +1,91 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# Kotlin
+*.class
+*.jar
+*.war
+*.aar
+
+# Android
+/android/build/
+/android/.cxx/
+/android/local.properties
+/android/captures/
+/android/.externalNativeBuild/
+
+# Desktop
+/desktop/build/
+
+# Server
+/server/build/
+
+# Shared
+/shared/build/
+
+# ObjectBox
+objectbox-models/
+*.mdb
+*.lck
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment & secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.jks
+credentials.json
+secrets.json
+local.properties
+
+# Logs
+*.log
+logs/
+
+# Test results
+/test-results/
+/coverage/
+
+# Distribution
+/dist/
+*.apk
+*.aab
+*.dmg
+*.msi
+*.exe
+!gradlew.bat
+
+# Python (bridge-plugin)
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+
+# Misc
+*.bak
+*.tmp
+*.temp
+.claude/
