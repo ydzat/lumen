@@ -16,15 +16,16 @@ import io.ktor.client.HttpClient
 object LlmClientFactory {
 
     fun createClient(config: LlmConfig, httpClient: HttpClient): LLMClient {
+        val apiBase = config.resolveApiBase()
         return when (config.provider) {
             "deepseek" -> DeepSeekLLMClient(
                 config.apiKey,
-                DeepSeekClientSettings(config.apiBase.ifEmpty { "https://api.deepseek.com" }),
+                DeepSeekClientSettings(apiBase),
                 httpClient
             )
             "openai" -> OpenAILLMClient(
                 config.apiKey,
-                OpenAIClientSettings(config.apiBase.ifEmpty { "https://api.openai.com" }),
+                OpenAIClientSettings(apiBase),
                 httpClient
             )
             "anthropic" -> AnthropicLLMClient(
@@ -32,14 +33,11 @@ object LlmClientFactory {
                 AnthropicClientSettings(),
                 httpClient
             )
-            else -> {
-                require(config.apiBase.isNotBlank()) { "apiBase is required for custom provider '${config.provider}'" }
-                OpenAILLMClient(
-                    config.apiKey,
-                    OpenAIClientSettings(config.apiBase),
-                    httpClient
-                )
-            }
+            else -> OpenAILLMClient(
+                config.apiKey,
+                OpenAIClientSettings(apiBase),
+                httpClient
+            )
         }
     }
 

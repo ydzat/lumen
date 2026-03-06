@@ -53,6 +53,10 @@ kotlin {
         jvmMain.dependencies {
             implementation(libs.ktor.client.cio)
         }
+
+        jvmTest.dependencies {
+            implementation(libs.ktor.client.mock)
+        }
     }
 }
 
