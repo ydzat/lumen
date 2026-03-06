@@ -1,6 +1,5 @@
 package com.lumen.core.config
 
-import kotlinx.serialization.json.Json
 import java.io.File
 
 actual class ConfigStore(private val configDir: File) {
@@ -10,16 +9,10 @@ actual class ConfigStore(private val configDir: File) {
     private val configFile: File
         get() = File(configDir, CONFIG_FILE_NAME)
 
-    private val json = Json {
-        prettyPrint = true
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-    }
-
     actual fun load(): AppConfig {
         if (!configFile.exists()) return AppConfig()
         return try {
-            json.decodeFromString<AppConfig>(configFile.readText())
+            configJson.decodeFromString<AppConfig>(configFile.readText())
         } catch (_: Exception) {
             AppConfig()
         }
@@ -27,7 +20,7 @@ actual class ConfigStore(private val configDir: File) {
 
     actual fun save(config: AppConfig) {
         configDir.mkdirs()
-        configFile.writeText(json.encodeToString(AppConfig.serializer(), config))
+        configFile.writeText(configJson.encodeToString(AppConfig.serializer(), config))
     }
 
     companion object {
