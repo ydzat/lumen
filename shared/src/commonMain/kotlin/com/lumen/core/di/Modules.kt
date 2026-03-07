@@ -4,6 +4,7 @@ import com.lumen.companion.agent.LlmClientFactory
 import com.lumen.companion.agent.LumenAgent
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.memory.EmbeddingClient
+import com.lumen.core.memory.IntentRetriever
 import com.lumen.core.memory.KoogLlmCall
 import com.lumen.core.memory.LlmCall
 import com.lumen.core.memory.MemoryManager
@@ -35,7 +36,8 @@ val memoryModule = module {
     }
     single { SemanticCompressor(get()) }
     single { SemanticSynthesizer(get(), get(), get()) }
-    single { MemoryManager(get(), get(), get(), get()) }
+    single { IntentRetriever(get(), get(), get()) }
+    single { MemoryManager(get(), get(), get(), get(), get()) }
 }
 
 val researchModule = module {
