@@ -81,7 +81,7 @@
     },
     {
       "id": "2:4653137260564483636",
-      "lastPropertyId": "7:2059055193395185650",
+      "lastPropertyId": "11:849383771791015502",
       "name": "Source",
       "properties": [
         {
@@ -121,13 +121,227 @@
           "id": "7:2059055193395185650",
           "name": "createdAt",
           "type": 6
+        },
+        {
+          "id": "8:5792829881987503843",
+          "name": "category",
+          "type": 9
+        },
+        {
+          "id": "9:817308523282549517",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "10:242733094203334186",
+          "name": "icon",
+          "type": 9
+        },
+        {
+          "id": "11:849383771791015502",
+          "name": "refreshIntervalMin",
+          "type": 5
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:2083761251558003683",
+      "lastPropertyId": "16:1591522405916819586",
+      "name": "Article",
+      "properties": [
+        {
+          "id": "1:7519062300537382946",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6739127317577474490",
+          "name": "sourceId",
+          "type": 6
+        },
+        {
+          "id": "3:2683976597706343408",
+          "name": "title",
+          "indexId": "3:6563508123028571784",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:295139628076099403",
+          "name": "url",
+          "indexId": "4:9151541793602518559",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "5:2811680483336577358",
+          "name": "summary",
+          "type": 9
+        },
+        {
+          "id": "6:6202525177757466062",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "7:4372403451842392138",
+          "name": "author",
+          "type": 9
+        },
+        {
+          "id": "8:7736705599924692772",
+          "name": "publishedAt",
+          "type": 6
+        },
+        {
+          "id": "9:6675773818185487617",
+          "name": "fetchedAt",
+          "type": 6
+        },
+        {
+          "id": "10:9140870730389160215",
+          "name": "readAt",
+          "type": 6
+        },
+        {
+          "id": "11:2817689056848889549",
+          "name": "starred",
+          "type": 1
+        },
+        {
+          "id": "12:5395759842918692557",
+          "name": "embedding",
+          "indexId": "5:2361177490474032418",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "13:9205957922755654295",
+          "name": "aiSummary",
+          "type": 9
+        },
+        {
+          "id": "14:1140654260784528497",
+          "name": "aiRelevanceScore",
+          "type": 7
+        },
+        {
+          "id": "15:4153385607088227593",
+          "name": "keywords",
+          "type": 9
+        },
+        {
+          "id": "16:1591522405916819586",
+          "name": "projectIds",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:3670977489884201084",
+      "lastPropertyId": "7:5283064180091067881",
+      "name": "Digest",
+      "properties": [
+        {
+          "id": "1:2168280301823878498",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2337437370057109792",
+          "name": "date",
+          "indexId": "6:5004452048201281634",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:7444020710895606557",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "4:6345000886871110749",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "5:267301972044489843",
+          "name": "sourceBreakdown",
+          "type": 9
+        },
+        {
+          "id": "6:8078019888024628901",
+          "name": "projectId",
+          "type": 6
+        },
+        {
+          "id": "7:5283064180091067881",
+          "name": "createdAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "5:6135864324703906304",
+      "lastPropertyId": "8:772463789688365875",
+      "name": "ResearchProject",
+      "properties": [
+        {
+          "id": "1:2901446687961502341",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2150400648038466930",
+          "name": "name",
+          "indexId": "7:2020694099207040207",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:7649224724394070634",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "4:36626305228626914",
+          "name": "keywords",
+          "type": 9
+        },
+        {
+          "id": "5:4977569246719959855",
+          "name": "embedding",
+          "indexId": "8:4748608305065077273",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "6:4331803527363143785",
+          "name": "isActive",
+          "type": 1
+        },
+        {
+          "id": "7:4116926264995883723",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "8:772463789688365875",
+          "name": "updatedAt",
+          "type": 6
         }
       ],
       "relations": []
     }
   ],
-  "lastEntityId": "2:4653137260564483636",
-  "lastIndexId": "2:6271851765822236156",
+  "lastEntityId": "5:6135864324703906304",
+  "lastIndexId": "8:4748608305065077273",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
