@@ -84,6 +84,37 @@ Lumen calls LLMs via your own API key. Supported providers:
 
 ---
 
+## Docker Deployment
+
+```bash
+# Quick start
+docker compose up -d
+
+# View logs
+docker compose logs -f
+```
+
+Configure via environment variables:
+
+```bash
+LUMEN_ACCESS_TOKEN=your-token \
+LUMEN_LLM_API_KEY=sk-xxx \
+LUMEN_NTFY_URL=https://ntfy.sh \
+LUMEN_NTFY_TOPIC=lumen \
+docker compose up -d
+```
+
+| Variable | Description | Default |
+|---|---|---|
+| `LUMEN_ACCESS_TOKEN` | API access token | Auto-generated UUID |
+| `LUMEN_LLM_API_KEY` | LLM API key | Empty |
+| `LUMEN_NTFY_URL` | ntfy server URL | Empty (disabled) |
+| `LUMEN_NTFY_TOPIC` | ntfy push topic | Empty (disabled) |
+
+Data is persisted via Docker named volume `lumen-data`, including database, config files, and model files.
+
+---
+
 ## License
 
 [AGPL-3.0](LICENSE)

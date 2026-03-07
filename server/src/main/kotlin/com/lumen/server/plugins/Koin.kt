@@ -12,6 +12,7 @@ import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.ModelResourceLoader
 import com.lumen.core.memory.OnnxEmbeddingClient
 import com.lumen.research.collector.PlatformScheduler
+import com.lumen.server.config.EnvOverrides
 import com.lumen.server.config.ServerConfigStore
 import com.lumen.server.notification.NtfyNotifier
 import io.ktor.client.HttpClient
@@ -29,7 +30,11 @@ fun Application.configureKoin() {
     val serverDir = File(System.getProperty("user.home"), ".lumen/server")
 
     val serverPlatformModule = module {
-        single { ConfigStore(serverDir) }
+        single {
+            val store = ConfigStore(serverDir)
+            EnvOverrides.bootstrapAppConfig(store)
+            store
+        }
         single { ModelResourceLoader() }
         single<EmbeddingClient> {
             OnnxEmbeddingClient(get())

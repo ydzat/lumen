@@ -8,6 +8,12 @@ application {
     mainClass.set("com.lumen.server.ApplicationKt")
 }
 
+ktor {
+    fatJar {
+        archiveFileName.set("lumen-server.jar")
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     implementation(project(":shared-db"))
