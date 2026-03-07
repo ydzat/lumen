@@ -36,6 +36,10 @@ fun Route.documentRoutes() {
                     is PartData.FileItem -> {
                         filename = part.originalFileName ?: "unknown"
                         mimeType = part.contentType?.toString() ?: MimeTypes.PLAIN
+                        if (mimeType !in ALLOWED_MIME_TYPES) {
+                            part.dispose()
+                            throw IllegalArgumentException("Unsupported file type: $mimeType")
+                        }
                         fileBytes = part.provider().readRemaining().readByteArray()
                     }
                     is PartData.FormItem -> {
@@ -53,11 +57,8 @@ fun Route.documentRoutes() {
             val name = filename ?: "unknown"
             val type = mimeType ?: MimeTypes.PLAIN
 
-            if (bytes.size > MAX_FILE_SIZE) {
+            if (bytes.size.toLong() > MAX_FILE_SIZE) {
                 throw PayloadTooLargeException("File exceeds 50 MB limit")
-            }
-            if (type !in ALLOWED_MIME_TYPES) {
-                throw IllegalArgumentException("Unsupported file type: $type")
             }
 
             val document = documentManager.ingest(bytes, name, type, projectId)
