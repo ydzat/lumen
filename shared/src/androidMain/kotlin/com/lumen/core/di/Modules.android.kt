@@ -1,5 +1,6 @@
 package com.lumen.core.di
 
+import com.lumen.core.archive.ArchiveManager
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.PlatformDatabaseConfig
@@ -19,4 +20,5 @@ actual val platformModule: Module = module {
     single<EmbeddingClient> { OnnxEmbeddingClient(get()) } withOptions { onClose { (it as? OnnxEmbeddingClient)?.close() } }
     single { createLumenDatabase(PlatformDatabaseConfig(get())) }
     single { PlatformScheduler(get()) }
+    single { ArchiveManager(get(), get()) }
 }

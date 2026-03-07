@@ -4,6 +4,7 @@ import com.lumen.companion.persona.PersonaManager
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.database.PlatformDatabaseConfig
 import com.lumen.core.database.createLumenDatabase
+import com.lumen.core.archive.ArchiveManager
 import com.lumen.core.di.companionModule
 import com.lumen.core.di.documentModule
 import com.lumen.core.di.memoryModule
@@ -47,6 +48,7 @@ fun Application.configureKoin() {
         single { ServerConfigStore(serverDir) }
         single { HttpClient(CIO) } withOptions { onClose { it?.close() } }
         single { NtfyNotifier(get(), get()) }
+        single { ArchiveManager(get(), get()) }
     }
 
     install(Koin) {
