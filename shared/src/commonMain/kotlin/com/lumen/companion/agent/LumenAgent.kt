@@ -41,7 +41,7 @@ class LumenAgent(
         }
 
         return try {
-            var conversationMessages = messages.toMutableList<Message>()
+            val conversationMessages = messages.toMutableList<Message>()
             var iterations = 0
 
             while (iterations < MAX_TOOL_ITERATIONS) {
@@ -61,8 +61,7 @@ class LumenAgent(
                 iterations++
             }
 
-            val lastResponse = conversationMessages.lastOrNull()?.content ?: ""
-            ChatResult.Success(lastResponse)
+            ChatResult.Error("Maximum tool iterations ($MAX_TOOL_ITERATIONS) exceeded")
         } catch (e: Exception) {
             ChatResult.Error(classifyError(e), e)
         }
