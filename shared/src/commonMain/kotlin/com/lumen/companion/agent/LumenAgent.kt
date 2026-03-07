@@ -29,6 +29,7 @@ class LumenAgent(
     private val model = LlmClientFactory.resolveModel(config)
 
     internal val tools: List<Tool<*, *>> = buildTools()
+    internal val systemPrompt: String = buildSystemPrompt()
 
     private fun buildTools(): List<Tool<*, *>> = buildList {
         if (memoryManager != null) {
@@ -51,7 +52,7 @@ class LumenAgent(
 
         val messages = buildList {
             if (tools.isNotEmpty()) {
-                add(Message.System(SYSTEM_PROMPT, RequestMetaInfo.Empty))
+                add(Message.System(systemPrompt, RequestMetaInfo.Empty))
             }
             add(Message.User(message, RequestMetaInfo.Empty))
         }
@@ -118,16 +119,15 @@ class LumenAgent(
         httpClient.close()
     }
 
+    private fun buildSystemPrompt(): String {
+        val toolDescriptions = tools.joinToString("\n") { "- ${it.name}: ${it.descriptor.description}" }
+        return """You are Lumen, a personal AI assistant.
+You have access to the following tools:
+$toolDescriptions
+Use these tools when contextually appropriate."""
+    }
+
     private companion object {
         private const val MAX_TOOL_ITERATIONS = 5
-
-        private const val SYSTEM_PROMPT = """You are Lumen, a personal AI assistant with memory and research capabilities.
-You have access to the following tools:
-- recall_memory: Search your memories when the user asks about past conversations or stored information.
-- store_memory: Save important facts, preferences, or information the user shares.
-- search_articles: Search research articles by semantic similarity to a query.
-- get_digest: Retrieve the research digest for a specific date.
-- get_trends: Summarize recent research trends from stored digests.
-Use these tools when contextually appropriate."""
     }
 }
