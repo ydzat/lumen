@@ -1,0 +1,51 @@
+package com.lumen.server.plugins
+
+import com.lumen.companion.persona.PersonaManager
+import com.lumen.core.config.ConfigStore
+import com.lumen.core.database.PlatformDatabaseConfig
+import com.lumen.core.database.createLumenDatabase
+import com.lumen.core.di.companionModule
+import com.lumen.core.di.documentModule
+import com.lumen.core.di.memoryModule
+import com.lumen.core.di.researchModule
+import com.lumen.core.memory.EmbeddingClient
+import com.lumen.core.memory.ModelResourceLoader
+import com.lumen.core.memory.OnnxEmbeddingClient
+import com.lumen.research.collector.PlatformScheduler
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import org.koin.core.module.dsl.onClose
+import org.koin.core.module.dsl.withOptions
+import org.koin.dsl.module
+import org.koin.ktor.plugin.Koin
+import java.io.File
+
+fun Application.configureKoin() {
+    val serverDir = File(System.getProperty("user.home"), ".lumen/server")
+
+    val serverPlatformModule = module {
+        single { ConfigStore(serverDir) }
+        single { ModelResourceLoader() }
+        single<EmbeddingClient> {
+            OnnxEmbeddingClient(get())
+        } withOptions { onClose { (it as? OnnxEmbeddingClient)?.close() } }
+        single {
+            val dbDir = File(serverDir, "db")
+            createLumenDatabase(PlatformDatabaseConfig(dbDir))
+        } withOptions { onClose { it?.close() } }
+        single { PlatformScheduler(get()) }
+    }
+
+    install(Koin) {
+        modules(
+            serverPlatformModule,
+            companionModule,
+            memoryModule,
+            researchModule,
+            documentModule,
+        )
+    }
+
+    val koin = org.koin.core.context.GlobalContext.get()
+    koin.get<PersonaManager>().seedBuiltInPersonas()
+}
