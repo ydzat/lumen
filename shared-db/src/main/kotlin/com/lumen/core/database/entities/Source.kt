@@ -10,6 +10,10 @@ data class Source(
     @Index var name: String = "",
     var url: String = "",
     var type: String = "",
+    var category: String = "",
+    var description: String = "",
+    var icon: String = "",
+    var refreshIntervalMin: Int = 60,
     var enabled: Boolean = true,
     var lastFetchedAt: Long = 0,
     var createdAt: Long = 0
