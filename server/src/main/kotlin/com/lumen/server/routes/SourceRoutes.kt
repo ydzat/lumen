@@ -46,9 +46,18 @@ fun Route.sourceRoutes() {
             val sourceManager = call.application.koinGet<SourceManager>()
             val id = call.parameters["id"]?.toLongOrNull()
                 ?: throw IllegalArgumentException("Invalid source ID")
-            sourceManager.get(id) ?: throw NotFoundException("Source not found: $id")
+            val existing = sourceManager.get(id)
+                ?: throw NotFoundException("Source not found: $id")
             val request = call.receive<SourceCreateRequest>()
-            val updated = sourceManager.update(request.toEntity().copy(id = id))
+            val updated = sourceManager.update(existing.copy(
+                name = request.name,
+                url = request.url,
+                type = request.type,
+                category = request.category,
+                description = request.description,
+                icon = request.icon,
+                refreshIntervalMin = request.refreshIntervalMin,
+            ))
             call.respond(updated.toDto())
         }
 

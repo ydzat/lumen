@@ -2,9 +2,9 @@ package com.lumen.server
 
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
-import com.lumen.core.database.entities.Digest
 import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.entities.MyObjectBox
+import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.database.entities.Source
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.LlmCall
@@ -19,6 +19,7 @@ import com.lumen.server.dto.AnalyzeResponse
 import com.lumen.server.dto.ArticleDto
 import com.lumen.server.dto.ArticleListResponse
 import com.lumen.server.dto.DigestDto
+import com.lumen.server.dto.ProjectCreateRequest
 import com.lumen.server.dto.ProjectDto
 import com.lumen.server.dto.RefreshResponse
 import com.lumen.server.dto.SourceCreateRequest
@@ -365,7 +366,7 @@ class ResearchRoutesTest {
             }
         }
 
-        val request = com.lumen.server.dto.ProjectCreateRequest(
+        val request = ProjectCreateRequest(
             name = "AI Research",
             description = "Artificial intelligence research",
             keywords = "ai,ml,llm",
@@ -395,7 +396,7 @@ class ResearchRoutesTest {
             }
         }
 
-        val project = com.lumen.core.database.entities.ResearchProject(
+        val project = ResearchProject(
             name = "Test Project",
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis(),
