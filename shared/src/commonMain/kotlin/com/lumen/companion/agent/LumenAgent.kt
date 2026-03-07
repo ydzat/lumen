@@ -47,7 +47,7 @@ class LumenAgent(
     }
     private val llmClient: LLMClient = LlmClientFactory.createClient(config, httpClient)
     private val model = LlmClientFactory.resolveModel(config)
-    internal val projectContext: ResearchProject? = loadProjectContext()
+    private val projectContext: ResearchProject? = loadProjectContext()
 
     internal val tools: List<Tool<*, *>> = buildTools()
     internal val systemPrompt: String = buildSystemPrompt()

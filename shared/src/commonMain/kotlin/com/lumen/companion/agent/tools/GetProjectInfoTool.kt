@@ -2,8 +2,9 @@ package com.lumen.companion.agent.tools
 
 import ai.koog.agents.core.tools.SimpleTool
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.database.entities.Article_
 import com.lumen.core.database.entities.Document_
-import com.lumen.research.parseCsvSet
+import io.objectbox.query.QueryBuilder.StringOrder
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -29,9 +30,10 @@ class GetProjectInfoTool(
             .build()
             .use { it.count() }
 
-        val articleCount = db.articleBox.all.count {
-            args.projectId.toString() in parseCsvSet(it.projectIds)
-        }
+        val articleCount = db.articleBox.query()
+            .contains(Article_.projectIds, args.projectId.toString(), StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.count() }
 
         return buildString {
             appendLine("Project: ${project.name}")
