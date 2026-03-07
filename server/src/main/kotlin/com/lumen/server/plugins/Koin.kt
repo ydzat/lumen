@@ -17,6 +17,7 @@ import io.ktor.server.application.install
 import org.koin.core.module.dsl.onClose
 import org.koin.core.module.dsl.withOptions
 import org.koin.dsl.module
+import org.koin.ktor.ext.get as koinGet
 import org.koin.ktor.plugin.Koin
 import java.io.File
 
@@ -46,6 +47,5 @@ fun Application.configureKoin() {
         )
     }
 
-    val koin = org.koin.core.context.GlobalContext.get()
-    koin.get<PersonaManager>().seedBuiltInPersonas()
+    koinGet<PersonaManager>().seedBuiltInPersonas()
 }

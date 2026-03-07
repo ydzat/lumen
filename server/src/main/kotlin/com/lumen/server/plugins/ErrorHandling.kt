@@ -26,7 +26,7 @@ fun Application.configureErrorHandling() {
                 ErrorResponse(cause.message ?: "Bad request", 400),
             )
         }
-        exception<Throwable> { call, cause ->
+        exception<Exception> { call, cause ->
             call.respond(
                 HttpStatusCode.InternalServerError,
                 ErrorResponse(cause.message ?: "Internal server error", 500),
