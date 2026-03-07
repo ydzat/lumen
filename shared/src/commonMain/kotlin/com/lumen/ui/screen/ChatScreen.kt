@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,7 +26,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Person
@@ -69,11 +72,14 @@ import com.lumen.companion.agent.LumenAgent
 import com.lumen.companion.conversation.ConversationManager
 import com.lumen.companion.persona.PersonaManager
 import com.lumen.core.database.entities.Conversation
+import com.lumen.core.database.entities.Document
 import com.lumen.core.database.entities.Message
 import com.lumen.core.database.entities.Persona
 import com.lumen.core.database.entities.ResearchProject
+import com.lumen.core.document.DocumentManager
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
+import com.lumen.ui.pickFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -401,6 +407,7 @@ private fun ConversationChatScreen(
 ) {
     val conversationManager = koinInject<ConversationManager>()
     val personaManager = koinInject<PersonaManager>()
+    val documentManager = getKoin().getOrNull<DocumentManager>()
     val agentFactory = getKoin()
 
     val scope = rememberCoroutineScope()
@@ -418,6 +425,9 @@ private fun ConversationChatScreen(
     var typewriterDone by remember { mutableStateOf(true) }
     var currentPersonaId by remember { mutableStateOf(initialConversation?.personaId ?: 0L) }
     var showPersonaPicker by remember { mutableStateOf(false) }
+    var isIngesting by remember { mutableStateOf(false) }
+    var showDocumentList by remember { mutableStateOf(false) }
+    val projectId = initialConversation?.projectId ?: 0L
     val currentPersonaName = remember(currentPersonaId) {
         if (currentPersonaId > 0) personaManager.get(currentPersonaId)?.name ?: "Default" else "Default"
     }
@@ -533,6 +543,37 @@ private fun ConversationChatScreen(
         }
     }
 
+    fun findUploadStatusIndex(filename: String): Int = uiItems.indexOfLast {
+        it is ChatUiItem.StatusInfo && (it as ChatUiItem.StatusInfo).text.startsWith("Uploading $filename")
+    }
+
+    fun attachFile() {
+        if (isIngesting || isLoading || documentManager == null) return
+        scope.launch {
+            val file = pickFile(listOf(".pdf", ".txt", ".md")) ?: return@launch
+            isIngesting = true
+            uiItems.add(ChatUiItem.StatusInfo("Uploading ${file.name}..."))
+            try {
+                val document = withContext(Dispatchers.Default) {
+                    documentManager.ingest(file.bytes, file.name, file.mimeType, projectId)
+                }
+                val statusIdx = findUploadStatusIndex(file.name)
+                if (statusIdx >= 0) {
+                    uiItems[statusIdx] = ChatUiItem.StatusInfo("Uploaded ${file.name} (${document.chunkCount} chunks)")
+                }
+                snackbarHostState.showSnackbar("Document uploaded: ${file.name}")
+            } catch (e: Exception) {
+                val statusIdx = findUploadStatusIndex(file.name)
+                if (statusIdx >= 0) {
+                    uiItems[statusIdx] = ChatUiItem.StatusInfo("Failed to upload ${file.name}")
+                }
+                snackbarHostState.showSnackbar(e.message ?: "Failed to upload document")
+            } finally {
+                isIngesting = false
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -557,6 +598,13 @@ private fun ConversationChatScreen(
                     }
                 },
                 actions = {
+                    if (documentManager != null) {
+                        IconButton(
+                            onClick = { showDocumentList = true },
+                        ) {
+                            Icon(Icons.Default.Description, contentDescription = "Documents")
+                        }
+                    }
                     IconButton(
                         onClick = { showPersonaPicker = true },
                         enabled = !isLoading,
@@ -606,9 +654,23 @@ private fun ConversationChatScreen(
                 text = inputText,
                 onTextChange = { inputText = it },
                 onSend = { sendMessage() },
+                onAttach = { attachFile() },
                 isLoading = isLoading,
+                showAttach = documentManager != null,
+                isAttaching = isIngesting,
             )
         }
+    }
+
+    // Document list dialog
+    if (showDocumentList && documentManager != null) {
+        DocumentListDialog(
+            documentManager = documentManager,
+            projectId = projectId,
+            onDismiss = { showDocumentList = false },
+            onDeleted = { snackbarHostState.showSnackbar("Document deleted") },
+            scope = scope,
+        )
     }
 
     // Persona picker dialog
@@ -816,7 +878,10 @@ private fun InputBar(
     text: String,
     onTextChange: (String) -> Unit,
     onSend: () -> Unit,
+    onAttach: () -> Unit,
     isLoading: Boolean,
+    showAttach: Boolean = false,
+    isAttaching: Boolean = false,
 ) {
     Surface(
         tonalElevation = 3.dp,
@@ -827,6 +892,26 @@ private fun InputBar(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (showAttach) {
+                IconButton(
+                    onClick = onAttach,
+                    enabled = !isLoading && !isAttaching,
+                ) {
+                    if (isAttaching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.AttachFile,
+                            contentDescription = "Attach document",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
+            }
             OutlinedTextField(
                 value = text,
                 onValueChange = onTextChange,
@@ -855,6 +940,89 @@ private fun InputBar(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DocumentListDialog(
+    documentManager: DocumentManager,
+    projectId: Long,
+    onDismiss: () -> Unit,
+    onDeleted: suspend () -> Unit,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    var documents by remember { mutableStateOf(documentManager.listByProject(projectId)) }
+    var deleteTarget by remember { mutableStateOf<Document?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Documents") },
+        text = {
+            if (documents.isEmpty()) {
+                Text(
+                    text = "No documents uploaded yet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.heightIn(max = 300.dp),
+                ) {
+                    items(documents, key = { it.id }) { document ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = document.filename,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = "${document.chunkCount} chunks · ${formatEpochDate(document.createdAt)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(onClick = { deleteTarget = document }) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
+    )
+
+    deleteTarget?.let { document ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete document?") },
+            text = { Text("\"${document.filename}\" and all its chunks will be permanently deleted.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        documentManager.delete(document.id)
+                        deleteTarget = null
+                        documents = documentManager.listByProject(projectId)
+                        onDeleted()
+                    }
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+            },
+        )
     }
 }
 
