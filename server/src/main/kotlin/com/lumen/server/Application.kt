@@ -1,22 +1,29 @@
 package com.lumen.server
 
-import io.ktor.http.HttpStatusCode
+import com.lumen.server.plugins.configureCors
+import com.lumen.server.plugins.configureErrorHandling
+import com.lumen.server.plugins.configureKoin
+import com.lumen.server.plugins.configureLogging
+import com.lumen.server.plugins.configureSerialization
+import com.lumen.server.routes.apiRoutes
+import com.lumen.server.routes.healthRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
-import com.lumen.getPlatformName
 
 fun main() {
     embeddedServer(Netty, port = 8000, module = Application::module).start(wait = true)
 }
 
 fun Application.module() {
+    configureSerialization()
+    configureErrorHandling()
+    configureCors()
+    configureLogging()
+    configureKoin()
     routing {
-        get("/health") {
-            call.respondText("Lumen Server running on ${getPlatformName()}", status = HttpStatusCode.OK)
-        }
+        healthRoutes()
+        apiRoutes()
     }
 }
