@@ -8,8 +8,8 @@ actual class DocumentParser actual constructor() {
 
     actual suspend fun extractText(fileBytes: ByteArray, mimeType: String): String {
         return when (mimeType) {
-            MIME_PDF -> extractPdfText(fileBytes)
-            MIME_PLAIN, MIME_MARKDOWN -> fileBytes.decodeToString()
+            MimeTypes.PDF -> extractPdfText(fileBytes)
+            MimeTypes.PLAIN, MimeTypes.MARKDOWN -> fileBytes.decodeToString()
             else -> throw IllegalArgumentException("Unsupported MIME type: $mimeType")
         }
     }
@@ -19,11 +19,5 @@ actual class DocumentParser actual constructor() {
         return document.use { doc ->
             PDFTextStripper().getText(doc)
         }
-    }
-
-    companion object {
-        const val MIME_PDF = "application/pdf"
-        const val MIME_PLAIN = "text/plain"
-        const val MIME_MARKDOWN = "text/markdown"
     }
 }

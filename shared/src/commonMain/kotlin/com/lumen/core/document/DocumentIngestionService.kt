@@ -25,21 +25,27 @@ class DocumentIngestionService(
 
         val chunks = chunker.chunk(text)
 
-        val document = Document(
-            filename = filename,
-            mimeType = mimeType,
-            textContent = text,
-            chunkCount = chunks.size,
-            projectId = projectId,
-            createdAt = System.currentTimeMillis(),
-        )
-        val documentId = db.documentBox.put(document)
-
+        // Compute all embeddings before persisting (suspend calls cannot run inside runInTx)
+        val allEmbeddings = mutableListOf<FloatArray>()
         for (batch in chunks.chunked(EMBEDDING_BATCH_SIZE)) {
             val texts = batch.map { it.content }
-            val embeddings = embeddingClient.embedBatch(texts)
+            allEmbeddings.addAll(embeddingClient.embedBatch(texts))
+        }
 
-            val entities = batch.zip(embeddings) { chunk, embedding ->
+        // Persist Document + all DocumentChunks atomically
+        var documentId: Long = 0
+        db.store.runInTx {
+            val document = Document(
+                filename = filename,
+                mimeType = mimeType,
+                textContent = text,
+                chunkCount = chunks.size,
+                projectId = projectId,
+                createdAt = System.currentTimeMillis(),
+            )
+            documentId = db.documentBox.put(document)
+
+            val entities = chunks.zip(allEmbeddings) { chunk, embedding ->
                 DocumentChunk(
                     documentId = documentId,
                     projectId = projectId,
