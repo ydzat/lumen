@@ -1,13 +1,20 @@
 package com.lumen.core.database
 
 import com.lumen.core.database.entities.Article
+import com.lumen.core.database.entities.Article_
+import com.lumen.core.database.entities.Conversation
 import com.lumen.core.database.entities.Digest
+import com.lumen.core.database.entities.Digest_
+import com.lumen.core.database.entities.Document
+import com.lumen.core.database.entities.DocumentChunk
+import com.lumen.core.database.entities.DocumentChunk_
 import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.entities.MemoryEntry
+import com.lumen.core.database.entities.Message
+import com.lumen.core.database.entities.Message_
 import com.lumen.core.database.entities.MyObjectBox
+import com.lumen.core.database.entities.Persona
 import com.lumen.core.database.entities.ResearchProject
-import com.lumen.core.database.entities.Article_
-import com.lumen.core.database.entities.Digest_
 import com.lumen.core.database.entities.Source
 import io.objectbox.query.QueryBuilder
 import java.io.File
@@ -236,5 +243,230 @@ class LumenDatabaseTest {
 
         db.articleBox.remove(id)
         assertNull(db.articleBox.get(id))
+    }
+
+    // --- Conversation tests ---
+
+    @Test
+    fun putAndGetConversation() {
+        val now = System.currentTimeMillis()
+        val conversation = Conversation(
+            title = "Research Discussion",
+            personaId = 1,
+            projectId = 2,
+            messageCount = 0,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val id = db.conversationBox.put(conversation)
+        assertNotEquals(0, id)
+
+        val retrieved = db.conversationBox.get(id)
+        assertEquals("Research Discussion", retrieved.title)
+        assertEquals(1L, retrieved.personaId)
+        assertEquals(2L, retrieved.projectId)
+        assertEquals(0, retrieved.messageCount)
+    }
+
+    @Test
+    fun updateConversation() {
+        val id = db.conversationBox.put(Conversation(title = "Old Title", createdAt = System.currentTimeMillis()))
+        val updated = db.conversationBox.get(id).copy(title = "New Title", messageCount = 5)
+        db.conversationBox.put(updated)
+
+        val retrieved = db.conversationBox.get(id)
+        assertEquals("New Title", retrieved.title)
+        assertEquals(5, retrieved.messageCount)
+    }
+
+    @Test
+    fun deleteConversation() {
+        val id = db.conversationBox.put(Conversation(title = "To Delete"))
+        assertNotNull(db.conversationBox.get(id))
+
+        db.conversationBox.remove(id)
+        assertNull(db.conversationBox.get(id))
+    }
+
+    // --- Message tests ---
+
+    @Test
+    fun putAndGetMessage() {
+        val now = System.currentTimeMillis()
+        val message = Message(
+            conversationId = 1,
+            role = "user",
+            content = "Hello, how are you?",
+            createdAt = now,
+        )
+        val id = db.messageBox.put(message)
+        assertNotEquals(0, id)
+
+        val retrieved = db.messageBox.get(id)
+        assertEquals(1L, retrieved.conversationId)
+        assertEquals("user", retrieved.role)
+        assertEquals("Hello, how are you?", retrieved.content)
+        assertEquals("", retrieved.toolName)
+        assertEquals("", retrieved.toolArgs)
+    }
+
+    @Test
+    fun putToolCallMessage() {
+        val message = Message(
+            conversationId = 1,
+            role = "tool_call",
+            content = "",
+            toolName = "search_articles",
+            toolArgs = """{"query": "transformer"}""",
+            createdAt = System.currentTimeMillis(),
+        )
+        val id = db.messageBox.put(message)
+
+        val retrieved = db.messageBox.get(id)
+        assertEquals("tool_call", retrieved.role)
+        assertEquals("search_articles", retrieved.toolName)
+        assertEquals("""{"query": "transformer"}""", retrieved.toolArgs)
+    }
+
+    @Test
+    fun queryMessagesByConversationId() {
+        val convId = 42L
+        db.messageBox.put(Message(conversationId = convId, role = "user", content = "Hi"))
+        db.messageBox.put(Message(conversationId = convId, role = "assistant", content = "Hello!"))
+        db.messageBox.put(Message(conversationId = 99, role = "user", content = "Other conv"))
+
+        val query = db.messageBox.query()
+            .equal(Message_.conversationId, convId)
+            .build()
+        val messages = query.find()
+        query.close()
+
+        assertEquals(2, messages.size)
+        assertTrue(messages.all { it.conversationId == convId })
+    }
+
+    // --- Persona tests ---
+
+    @Test
+    fun putAndGetPersona() {
+        val persona = Persona(
+            name = "Research Assistant",
+            systemPrompt = "You are a research assistant.",
+            greeting = "How can I help with your research?",
+            avatarEmoji = "book",
+            isBuiltIn = true,
+            isActive = true,
+            createdAt = System.currentTimeMillis(),
+        )
+        val id = db.personaBox.put(persona)
+        assertNotEquals(0, id)
+
+        val retrieved = db.personaBox.get(id)
+        assertEquals("Research Assistant", retrieved.name)
+        assertEquals("You are a research assistant.", retrieved.systemPrompt)
+        assertEquals("How can I help with your research?", retrieved.greeting)
+        assertTrue(retrieved.isBuiltIn)
+        assertTrue(retrieved.isActive)
+    }
+
+    @Test
+    fun deletePersona() {
+        val id = db.personaBox.put(Persona(name = "To Delete"))
+        assertNotNull(db.personaBox.get(id))
+
+        db.personaBox.remove(id)
+        assertNull(db.personaBox.get(id))
+    }
+
+    // --- Document tests ---
+
+    @Test
+    fun putAndGetDocument() {
+        val now = System.currentTimeMillis()
+        val document = Document(
+            projectId = 1,
+            filename = "paper.pdf",
+            mimeType = "application/pdf",
+            textContent = "This is the extracted text content of the paper.",
+            chunkCount = 5,
+            createdAt = now,
+        )
+        val id = db.documentBox.put(document)
+        assertNotEquals(0, id)
+
+        val retrieved = db.documentBox.get(id)
+        assertEquals(1L, retrieved.projectId)
+        assertEquals("paper.pdf", retrieved.filename)
+        assertEquals("application/pdf", retrieved.mimeType)
+        assertEquals(5, retrieved.chunkCount)
+    }
+
+    @Test
+    fun deleteDocument() {
+        val id = db.documentBox.put(Document(filename = "to_delete.pdf"))
+        assertNotNull(db.documentBox.get(id))
+
+        db.documentBox.remove(id)
+        assertNull(db.documentBox.get(id))
+    }
+
+    // --- DocumentChunk tests ---
+
+    @Test
+    fun putAndGetDocumentChunk() {
+        val embedding = FloatArray(EMBEDDING_DIMENSIONS) { it.toFloat() / EMBEDDING_DIMENSIONS.toFloat() }
+        val chunk = DocumentChunk(
+            documentId = 1,
+            projectId = 2,
+            chunkIndex = 0,
+            content = "This is the first chunk of the document.",
+            embedding = embedding,
+        )
+        val id = db.documentChunkBox.put(chunk)
+        assertNotEquals(0, id)
+
+        val retrieved = db.documentChunkBox.get(id)
+        assertEquals(1L, retrieved.documentId)
+        assertEquals(2L, retrieved.projectId)
+        assertEquals(0, retrieved.chunkIndex)
+        assertEquals("This is the first chunk of the document.", retrieved.content)
+        assertEquals(EMBEDDING_DIMENSIONS, retrieved.embedding.size)
+        assertTrue(retrieved.embedding.contentEquals(embedding))
+    }
+
+    @Test
+    fun queryDocumentChunksByDocumentId() {
+        val embedding = FloatArray(EMBEDDING_DIMENSIONS) { 0.1f }
+        db.documentChunkBox.put(DocumentChunk(documentId = 1, chunkIndex = 0, content = "Chunk 1", embedding = embedding))
+        db.documentChunkBox.put(DocumentChunk(documentId = 1, chunkIndex = 1, content = "Chunk 2", embedding = embedding))
+        db.documentChunkBox.put(DocumentChunk(documentId = 2, chunkIndex = 0, content = "Other doc", embedding = embedding))
+
+        val query = db.documentChunkBox.query()
+            .equal(DocumentChunk_.documentId, 1L)
+            .build()
+        val chunks = query.find()
+        query.close()
+
+        assertEquals(2, chunks.size)
+        assertTrue(chunks.all { it.documentId == 1L })
+    }
+
+    @Test
+    fun documentChunkHnswNearestNeighbor() {
+        val targetEmbedding = FloatArray(EMBEDDING_DIMENSIONS) { 0.5f }
+        val similarEmbedding = FloatArray(EMBEDDING_DIMENSIONS) { 0.49f }
+        val dissimilarEmbedding = FloatArray(EMBEDDING_DIMENSIONS) { -0.5f }
+
+        db.documentChunkBox.put(DocumentChunk(documentId = 1, chunkIndex = 0, content = "Similar", embedding = similarEmbedding))
+        db.documentChunkBox.put(DocumentChunk(documentId = 1, chunkIndex = 1, content = "Dissimilar", embedding = dissimilarEmbedding))
+
+        val query = db.documentChunkBox.query(
+            DocumentChunk_.embedding.nearestNeighbors(targetEmbedding, 1)
+        ).build()
+        val results = query.find()
+        query.close()
+
+        assertEquals(1, results.size)
+        assertEquals("Similar", results[0].content)
     }
 }
