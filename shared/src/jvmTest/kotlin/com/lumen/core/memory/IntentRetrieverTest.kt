@@ -1,6 +1,7 @@
 package com.lumen.core.memory
 
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.entities.MemoryEntry
 import com.lumen.core.database.entities.MyObjectBox
 import java.io.File
@@ -19,7 +20,7 @@ class IntentRetrieverTest {
     private val fakeEmbeddingClient = object : EmbeddingClient {
         override suspend fun embed(text: String): FloatArray {
             val seed = text.hashCode()
-            return FloatArray(1536) { i -> ((seed + i) % 100) / 100f }
+            return FloatArray(EMBEDDING_DIMENSIONS) { i -> ((seed + i) % 100) / 100f }
         }
         override suspend fun embedBatch(texts: List<String>): List<FloatArray> =
             texts.map { embed(it) }
@@ -51,7 +52,7 @@ class IntentRetrieverTest {
         )
         for (content in entries) {
             val seed = content.hashCode()
-            val embedding = FloatArray(1536) { i -> ((seed + i) % 100) / 100f }
+            val embedding = FloatArray(EMBEDDING_DIMENSIONS) { i -> ((seed + i) % 100) / 100f }
             val entry = MemoryEntry(
                 content = content,
                 embedding = embedding,
@@ -120,7 +121,7 @@ class IntentRetrieverTest {
 
     @Test
     fun retrieve_ranksMultiHitEntriesHigher() = runBlocking {
-        val commonEmbedding = FloatArray(1536) { i -> (1f + i * 0.001f) }
+        val commonEmbedding = FloatArray(EMBEDDING_DIMENSIONS) { i -> (1f + i * 0.001f) }
         val commonEntry = MemoryEntry(
             content = "User researches ML and has deadlines",
             embedding = commonEmbedding,
@@ -129,7 +130,7 @@ class IntentRetrieverTest {
         )
         db.memoryEntryBox.put(commonEntry)
 
-        val otherEmbedding = FloatArray(1536) { i ->
+        val otherEmbedding = FloatArray(EMBEDDING_DIMENSIONS) { i ->
             kotlin.math.sin(50f * 0.1f + i * 50f * 0.01f).toFloat()
         }
         val otherEntry = MemoryEntry(
@@ -146,7 +147,7 @@ class IntentRetrieverTest {
 
         val fakeEmbed = object : EmbeddingClient {
             override suspend fun embed(text: String): FloatArray {
-                return FloatArray(1536) { i -> (1f + i * 0.001f) }
+                return FloatArray(EMBEDDING_DIMENSIONS) { i -> (1f + i * 0.001f) }
             }
             override suspend fun embedBatch(texts: List<String>): List<FloatArray> =
                 texts.map { embed(it) }

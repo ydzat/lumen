@@ -24,6 +24,14 @@ kotlin {
     jvm()
 
     sourceSets {
+        val jvmCommonMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.onnxruntime)
+                implementation(libs.djl.tokenizers)
+            }
+        }
+
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -44,14 +52,21 @@ kotlin {
             implementation(libs.kotlin.test)
         }
 
-        androidMain.dependencies {
-            implementation(libs.coroutines.android)
-            implementation(libs.ktor.client.cio)
-            implementation(libs.koin.android)
+        androidMain {
+            dependsOn(jvmCommonMain)
+            dependencies {
+                implementation(libs.coroutines.android)
+                implementation(libs.ktor.client.cio)
+                implementation(libs.koin.android)
+                implementation(libs.onnxruntime.android)
+            }
         }
 
-        jvmMain.dependencies {
-            implementation(libs.ktor.client.cio)
+        jvmMain {
+            dependsOn(jvmCommonMain)
+            dependencies {
+                implementation(libs.ktor.client.cio)
+            }
         }
 
         jvmTest.dependencies {

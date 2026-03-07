@@ -1,6 +1,7 @@
 package com.lumen.core.memory
 
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.entities.MemoryEntry
 import com.lumen.core.database.entities.MyObjectBox
 import java.io.File
@@ -31,7 +32,7 @@ class SemanticSynthesizerTest {
     private val fakeEmbeddingClient = object : EmbeddingClient {
         override suspend fun embed(text: String): FloatArray {
             val seed = text.hashCode()
-            return FloatArray(1536) { i -> ((seed + i) % 100) / 100f }
+            return FloatArray(EMBEDDING_DIMENSIONS) { i -> ((seed + i) % 100) / 100f }
         }
         override suspend fun embedBatch(texts: List<String>): List<FloatArray> =
             texts.map { embed(it) }
@@ -44,7 +45,7 @@ class SemanticSynthesizerTest {
     }
 
     private fun makeEmbedding(seed: Float): FloatArray {
-        return FloatArray(1536) { i -> (seed + i * 0.001f) }
+        return FloatArray(EMBEDDING_DIMENSIONS) { i -> (seed + i * 0.001f) }
     }
 
     private fun makeSimilarEmbedding(base: FloatArray, perturbation: Float = 0.001f): FloatArray {
@@ -53,7 +54,7 @@ class SemanticSynthesizerTest {
 
     private fun makeDifferentEmbedding(seed: Float): FloatArray {
         // Use sine with different frequencies to produce genuinely orthogonal vectors
-        return FloatArray(1536) { i ->
+        return FloatArray(EMBEDDING_DIMENSIONS) { i ->
             kotlin.math.sin(seed * 0.1f + i * seed * 0.01f).toFloat()
         }
     }

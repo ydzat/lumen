@@ -8,6 +8,8 @@ ktor = "3.1.0"
 koin = "4.0.3"
 coroutines = "1.10.2"
 serialization = "1.8.1"
+onnxruntime = "1.21.0"
+djl-tokenizers = "0.31.1"
 androidx-activity-compose = "1.9.3"
 
 [libraries]
@@ -47,6 +49,13 @@ serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-jso
 
 # AndroidX
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
+
+# ONNX Runtime (local embedding inference)
+onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
+
+# DJL Tokenizers (HuggingFace tokenizer JNI bindings)
+djl-tokenizers = { module = "ai.djl.huggingface:tokenizers", version.ref = "djl-tokenizers" }
 
 # Testing
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

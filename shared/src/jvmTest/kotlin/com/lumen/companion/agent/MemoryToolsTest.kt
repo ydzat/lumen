@@ -5,6 +5,7 @@ import com.lumen.companion.agent.tools.RecallMemoryTool
 import com.lumen.companion.agent.tools.StoreMemoryArgs
 import com.lumen.companion.agent.tools.StoreMemoryTool
 import com.lumen.core.config.LlmConfig
+import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.MyObjectBox
 import com.lumen.core.memory.EmbeddingClient
@@ -30,7 +31,7 @@ class MemoryToolsTest {
     private val fakeEmbeddingClient = object : EmbeddingClient {
         override suspend fun embed(text: String): FloatArray {
             val seed = text.hashCode()
-            return FloatArray(1536) { i -> ((seed + i) % 100) / 100f }
+            return FloatArray(EMBEDDING_DIMENSIONS) { i -> ((seed + i) % 100) / 100f }
         }
         override suspend fun embedBatch(texts: List<String>): List<FloatArray> =
             texts.map { embed(it) }
