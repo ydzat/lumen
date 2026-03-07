@@ -1,5 +1,6 @@
 package com.lumen.core.memory
 
+import com.lumen.core.util.formatEpochDate
 import kotlinx.serialization.json.Json
 
 class SemanticCompressor(private val llmCall: LlmCall) {
@@ -13,7 +14,7 @@ class SemanticCompressor(private val llmCall: LlmCall) {
     }
 
     internal fun buildSystemPrompt(currentTime: Long): String {
-        val currentDate = formatDate(currentTime)
+        val currentDate = formatEpochDate(currentTime)
         return """
 You are a memory extraction assistant. Your task is to extract atomic, self-contained facts from a conversation.
 
@@ -62,37 +63,4 @@ If no meaningful facts can be extracted, return an empty array: []
         return text.substring(start, end + 1)
     }
 
-    private fun formatDate(timeMillis: Long): String {
-        val totalDays = timeMillis / 86_400_000L
-        // Unix epoch is 1970-01-01 (Thursday)
-        var year = 1970
-        var remaining = totalDays
-
-        while (true) {
-            val daysInYear = if (isLeapYear(year)) 366L else 365L
-            if (remaining < daysInYear) break
-            remaining -= daysInYear
-            year++
-        }
-
-        val monthDays = if (isLeapYear(year)) {
-            intArrayOf(31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-        } else {
-            intArrayOf(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-        }
-
-        var month = 1
-        for (days in monthDays) {
-            if (remaining < days) break
-            remaining -= days
-            month++
-        }
-        val day = remaining.toInt() + 1
-
-        return "$year-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
-    }
-
-    private fun isLeapYear(year: Int): Boolean {
-        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
-    }
 }

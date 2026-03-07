@@ -10,6 +10,7 @@ import com.lumen.core.memory.LlmCall
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.SemanticCompressor
 import com.lumen.core.memory.SemanticSynthesizer
+import com.lumen.core.util.dateToEpochRange
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.test.AfterTest
@@ -39,7 +40,7 @@ class DigestGeneratorTest {
     }
 
     private val testDate = "2026-03-07"
-    private val testDateStartEpoch = DigestGenerator.dateToEpochRange(testDate).first
+    private val testDateStartEpoch = dateToEpochRange(testDate).first
 
     @BeforeTest
     fun setup() {
@@ -224,11 +225,11 @@ class DigestGeneratorTest {
 
     @Test
     fun dateToEpochRange_correctBounds() {
-        val (start, end) = DigestGenerator.dateToEpochRange("2026-03-07")
+        val (start, end) = dateToEpochRange("2026-03-07")
         assertEquals(86_400_000L, end - start)
         assertTrue(start > 0)
 
-        val (invalidStart, invalidEnd) = DigestGenerator.dateToEpochRange("invalid")
+        val (invalidStart, invalidEnd) = dateToEpochRange("invalid")
         assertEquals(0L, invalidStart)
         assertEquals(0L, invalidEnd)
     }
