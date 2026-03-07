@@ -8,9 +8,10 @@ import io.ktor.server.routing.route
 fun Route.apiRoutes() {
     authenticate(AUTH_BEARER) {
         route("/api") {
-            route("/research") {
-                // #83: Research REST API
-            }
+            articleRoutes()
+            sourceRoutes()
+            projectRoutes()
+            digestRoutes()
             route("/chat") {
                 // #84: Chat REST API
             }
