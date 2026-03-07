@@ -18,7 +18,8 @@ import org.koin.dsl.module
 val companionModule = module {
     factory {
         val config = get<ConfigStore>().load().llm
-        LumenAgent(config)
+        val memoryManager = getOrNull<MemoryManager>()
+        LumenAgent(config, memoryManager)
     }
 }
 
