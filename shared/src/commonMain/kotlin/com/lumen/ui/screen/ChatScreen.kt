@@ -631,6 +631,7 @@ private fun AssistantBubble(text: String, onTapToSkip: () -> Unit) {
 @Composable
 private fun ToolCallCard(item: ChatUiItem.ToolCall) {
     var expanded by remember { mutableStateOf(false) }
+    val argsSummary = remember(item.args) { formatArgsSummary(item.args) }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -657,16 +658,27 @@ private fun ToolCallCard(item: ChatUiItem.ToolCall) {
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier.weight(1f),
                 )
-                if (item.result != null) {
-                    Icon(
-                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "Collapse" else "Expand",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                    )
-                }
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
             }
 
+            // Args summary — always visible when args are present
+            if (argsSummary.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = argsSummary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                    maxLines = if (expanded) Int.MAX_VALUE else 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            // Expanded: full result
             AnimatedVisibility(
                 visible = expanded && item.result != null,
                 enter = expandVertically(),
@@ -686,6 +698,28 @@ private fun ToolCallCard(item: ChatUiItem.ToolCall) {
         }
     }
 }
+
+internal fun formatArgsSummary(argsJson: String): String {
+    if (argsJson.isBlank()) return ""
+    return try {
+        val element = kotlinx.serialization.json.Json.parseToJsonElement(argsJson)
+        val obj = element as? kotlinx.serialization.json.JsonObject ?: return argsJson.take(ARGS_SUMMARY_MAX_LENGTH)
+        obj.entries
+            .mapNotNull { (key, value) ->
+                val display = when (value) {
+                    is kotlinx.serialization.json.JsonPrimitive -> value.content
+                    else -> value.toString()
+                }
+                if (display.isNotBlank()) "$key: $display" else null
+            }
+            .joinToString(", ")
+            .take(ARGS_SUMMARY_MAX_LENGTH)
+    } catch (_: Exception) {
+        argsJson.take(ARGS_SUMMARY_MAX_LENGTH)
+    }
+}
+
+private const val ARGS_SUMMARY_MAX_LENGTH = 100
 
 @Composable
 private fun StatusChip(text: String) {
