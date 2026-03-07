@@ -34,15 +34,17 @@ class ConversationManager(private val db: LumenDatabase) {
     }
 
     fun deleteConversation(id: Long) {
-        val query = db.messageBox.query()
-            .equal(Message_.conversationId, id)
-            .build()
-        val messages = query.find()
-        query.close()
-        if (messages.isNotEmpty()) {
-            db.messageBox.remove(messages)
+        db.store.runInTx {
+            val query = db.messageBox.query()
+                .equal(Message_.conversationId, id)
+                .build()
+            val messages = query.find()
+            query.close()
+            if (messages.isNotEmpty()) {
+                db.messageBox.remove(messages)
+            }
+            db.conversationBox.remove(id)
         }
-        db.conversationBox.remove(id)
     }
 
     fun getMessages(conversationId: Long): List<Message> {
@@ -71,16 +73,18 @@ class ConversationManager(private val db: LumenDatabase) {
             toolArgs = toolArgs,
             createdAt = now,
         )
-        val id = db.messageBox.put(message)
-
-        val conversation = db.conversationBox.get(conversationId)
-        if (conversation != null) {
-            db.conversationBox.put(
-                conversation.copy(
-                    messageCount = conversation.messageCount + 1,
-                    updatedAt = now,
+        var id: Long = 0
+        db.store.runInTx {
+            id = db.messageBox.put(message)
+            val conversation = db.conversationBox.get(conversationId)
+            if (conversation != null) {
+                db.conversationBox.put(
+                    conversation.copy(
+                        messageCount = conversation.messageCount + 1,
+                        updatedAt = now,
+                    )
                 )
-            )
+            }
         }
 
         return db.messageBox.get(id)

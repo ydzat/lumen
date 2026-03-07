@@ -4,8 +4,9 @@ import ai.koog.prompt.message.Message as KoogMessage
 import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.message.ResponseMetaInfo
 import com.lumen.core.database.entities.Message
+import com.lumen.core.memory.LlmCall
 
-class ContextWindowBuilder(private val llmCall: com.lumen.core.memory.LlmCall? = null) {
+class ContextWindowBuilder(private val llmCall: LlmCall? = null) {
 
     suspend fun buildContext(
         messages: List<Message>,

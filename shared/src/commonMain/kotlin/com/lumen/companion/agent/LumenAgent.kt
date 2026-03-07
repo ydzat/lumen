@@ -163,7 +163,9 @@ class LumenAgent(
     ): Int? {
         val mm = memoryManager ?: return null
         val conversation = cm.getConversation(conversationId) ?: return null
-        if (conversation.messageCount % MEMORY_EXTRACTION_INTERVAL != 0) return null
+        if (conversation.messageCount == 0 ||
+            conversation.messageCount % MEMORY_EXTRACTION_INTERVAL != 0
+        ) return null
 
         val messages = cm.getMessages(conversationId)
         val recentMessages = messages.takeLast(MEMORY_EXTRACTION_INTERVAL * 2)
