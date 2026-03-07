@@ -3,6 +3,8 @@ package com.lumen.core.di
 import com.lumen.companion.agent.LlmClientFactory
 import com.lumen.companion.agent.LumenAgent
 import com.lumen.core.config.ConfigStore
+import com.lumen.core.database.LumenDatabase
+import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.IntentRetriever
 import com.lumen.core.memory.KoogLlmCall
 import com.lumen.core.memory.LlmCall
@@ -25,7 +27,9 @@ val companionModule = module {
     factory {
         val config = get<ConfigStore>().load().llm
         val memoryManager = getOrNull<MemoryManager>()
-        LumenAgent(config, memoryManager)
+        val db = getOrNull<LumenDatabase>()
+        val embeddingClient = getOrNull<EmbeddingClient>()
+        LumenAgent(config, memoryManager, db, embeddingClient)
     }
 }
 
