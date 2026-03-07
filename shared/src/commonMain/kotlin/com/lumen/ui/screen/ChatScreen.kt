@@ -702,22 +702,18 @@ private fun ToolCallCard(item: ChatUiItem.ToolCall) {
 internal fun formatArgsSummary(argsJson: String): String {
     if (argsJson.isBlank()) return ""
     return try {
-        // Parse simple JSON key-value pairs for display
-        // Args come as serialized JSON like {"query":"transformer","limit":5}
-        argsJson
-            .removePrefix("{").removeSuffix("}")
-            .split(",")
-            .mapNotNull { pair ->
-                val parts = pair.split(":", limit = 2)
-                if (parts.size == 2) {
-                    val key = parts[0].trim().removeSurrounding("\"")
-                    val value = parts[1].trim().removeSurrounding("\"")
-                    if (value.isNotBlank()) "$key: $value" else null
-                } else {
-                    null
+        val element = kotlinx.serialization.json.Json.parseToJsonElement(argsJson)
+        val obj = element as? kotlinx.serialization.json.JsonObject ?: return argsJson.take(ARGS_SUMMARY_MAX_LENGTH)
+        obj.entries
+            .mapNotNull { (key, value) ->
+                val display = when (value) {
+                    is kotlinx.serialization.json.JsonPrimitive -> value.content
+                    else -> value.toString()
                 }
+                if (display.isNotBlank()) "$key: $display" else null
             }
             .joinToString(", ")
+            .take(ARGS_SUMMARY_MAX_LENGTH)
     } catch (_: Exception) {
         argsJson.take(ARGS_SUMMARY_MAX_LENGTH)
     }

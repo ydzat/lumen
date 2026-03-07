@@ -34,17 +34,20 @@ class FormatArgsSummaryTest {
     }
 
     @Test
+    fun valueWithComma_parsedCorrectly() {
+        val result = formatArgsSummary("""{"query":"attention, transformer","limit":5}""")
+        assertEquals("query: attention, transformer, limit: 5", result)
+    }
+
+    @Test
     fun nestedJson_handledGracefully() {
-        // Nested JSON won't parse perfectly with simple split, but should not crash
         val result = formatArgsSummary("""{"query":"test","nested":{"a":1}}""")
-        // Should return something without crashing
         assert(result.contains("query: test"))
     }
 
     @Test
     fun malformedInput_doesNotCrash() {
         val result = formatArgsSummary("not json at all")
-        // Should not crash, returns some non-null string
         assert(result.length >= 0)
     }
 }
