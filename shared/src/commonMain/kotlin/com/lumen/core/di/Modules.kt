@@ -12,10 +12,10 @@ import com.lumen.core.memory.SemanticSynthesizer
 import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
-import com.lumen.research.digest.DigestFormatter
-import com.lumen.research.digest.DigestGenerator
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.collector.SourceManager
+import com.lumen.research.digest.DigestFormatter
+import com.lumen.research.digest.DigestGenerator
 import io.ktor.client.HttpClient
 import org.koin.core.module.Module
 import org.koin.dsl.module
