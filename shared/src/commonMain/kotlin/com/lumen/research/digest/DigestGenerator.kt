@@ -5,6 +5,7 @@ import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.Digest
 import com.lumen.core.memory.LlmCall
 import com.lumen.core.memory.MemoryManager
+import com.lumen.core.util.dateToEpochRange
 import com.lumen.research.parseCsvSet
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -188,38 +189,5 @@ class DigestGenerator(
 Return a JSON object only, with no other text:
 
 {"title": "Digest title", "highlights": "Multi-paragraph highlights text", "trends": "Trend analysis text"}"""
-
-        internal fun dateToEpochRange(date: String): Pair<Long, Long> {
-            val parts = date.split("-")
-            if (parts.size != 3) return 0L to 0L
-            val year = parts[0].toIntOrNull() ?: return 0L to 0L
-            val month = parts[1].toIntOrNull() ?: return 0L to 0L
-            val day = parts[2].toIntOrNull() ?: return 0L to 0L
-
-            val startOfDay = dateToEpochMillis(year, month, day)
-            val endOfDay = startOfDay + 86_400_000L
-            return startOfDay to endOfDay
-        }
-
-        private fun dateToEpochMillis(year: Int, month: Int, day: Int): Long {
-            var totalDays = 0L
-            for (y in 1970 until year) {
-                totalDays += if (isLeapYear(y)) 366 else 365
-            }
-            val monthDays = if (isLeapYear(year)) {
-                intArrayOf(31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-            } else {
-                intArrayOf(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-            }
-            for (m in 1 until month) {
-                totalDays += monthDays[m - 1]
-            }
-            totalDays += day - 1
-            return totalDays * 86_400_000L
-        }
-
-        private fun isLeapYear(year: Int): Boolean {
-            return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
-        }
     }
 }

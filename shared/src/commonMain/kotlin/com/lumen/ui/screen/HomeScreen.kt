@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Digest
+import com.lumen.core.util.formatEpochDate
 import com.lumen.research.digest.DigestFormatter
 import org.koin.compose.koinInject
 

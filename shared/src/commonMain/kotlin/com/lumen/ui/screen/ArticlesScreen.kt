@@ -55,12 +55,14 @@ import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.memory.MemoryManager
+import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.parseCsvSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.compose.getKoin
 import org.koin.compose.koinInject
 
 private enum class SortMode(val label: String) {
@@ -74,7 +76,7 @@ fun ArticlesScreen() {
     val db = koinInject<LumenDatabase>()
     val projectManager = koinInject<ProjectManager>()
     val rssCollector = koinInject<RssCollector>()
-    val memoryManager = org.koin.compose.getKoin().getOrNull<MemoryManager>()
+    val memoryManager = getKoin().getOrNull<MemoryManager>()
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -89,11 +91,15 @@ fun ArticlesScreen() {
     var selectedArticle by remember { mutableStateOf<Article?>(null) }
     var projectExpanded by remember { mutableStateOf(false) }
 
+    // Initialize activeProjectId from DB once on first composition
+    LaunchedEffect(Unit) {
+        val activeProject = projectManager.getActive()
+        activeProjectId = activeProject?.id ?: 0L
+    }
+
     fun loadData() {
         sourceNames = db.sourceBox.all.associate { it.id to it.name }
         projects = projectManager.listAll()
-        val activeProject = projectManager.getActive()
-        activeProjectId = activeProject?.id ?: 0L
 
         val allArticles = db.articleBox.all
         val filtered = allArticles
@@ -469,31 +475,3 @@ private fun ArticleDetailDialog(
     )
 }
 
-internal fun formatEpochDate(epochMillis: Long): String {
-    val totalDays = epochMillis / 86_400_000L
-    var remainingDays = totalDays
-    var year = 1970
-    while (true) {
-        val daysInYear = if (isLeapYear(year)) 366L else 365L
-        if (remainingDays < daysInYear) break
-        remainingDays -= daysInYear
-        year++
-    }
-    val monthDays = if (isLeapYear(year)) {
-        intArrayOf(31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-    } else {
-        intArrayOf(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-    }
-    var month = 1
-    for (m in monthDays) {
-        if (remainingDays < m) break
-        remainingDays -= m
-        month++
-    }
-    val day = remainingDays.toInt() + 1
-    return "${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
-}
-
-private fun isLeapYear(year: Int): Boolean {
-    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
-}
