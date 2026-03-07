@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 class SemanticSynthesizer(
     private val database: LumenDatabase,
     private val llmCall: LlmCall,
+    private val embeddingClient: EmbeddingClient,
     private val similarityThreshold: Float = 0.85f,
     private val maxNeighbors: Int = 5,
 ) {
@@ -35,7 +36,10 @@ class SemanticSynthesizer(
         val decision = askLlmForDecision(candidate.content, existing.content, similarity)
 
         return when (decision.action) {
-            "merge", "update" -> executeMerge(candidate, existing, decision)
+            "merge", "update" -> {
+                val mergedEmbedding = embeddingClient.embed(decision.mergedContent)
+                executeMerge(candidate, existing, decision, mergedEmbedding)
+            }
             else -> SynthesisResult.Kept
         }
     }
@@ -83,7 +87,7 @@ Return a JSON object only, with no other text:
         return """
 Existing memory: "$existingContent"
 New memory: "$newContent"
-Cosine similarity: ${"%.3f".format(similarity)}
+Cosine similarity: ${((similarity * 1000).toInt() / 1000f)}
 
 Decide: merge, update, or keep_both?
         """.trimIndent()
@@ -109,6 +113,7 @@ Decide: merge, update, or keep_both?
         candidate: MemoryEntry,
         existing: MemoryEntry,
         decision: MergeDecision,
+        mergedEmbedding: FloatArray,
     ): SynthesisResult.Merged {
         val now = System.currentTimeMillis()
 
@@ -132,7 +137,7 @@ Decide: merge, update, or keep_both?
             content = decision.mergedContent,
             category = candidate.category,
             source = candidate.source,
-            embedding = candidate.embedding,
+            embedding = mergedEmbedding,
             keywords = combinedKeywords,
             importance = maxOf(candidate.importance, existing.importance),
             createdAt = minOf(candidate.createdAt, existing.createdAt),
@@ -143,8 +148,10 @@ Decide: merge, update, or keep_both?
             originalTimestamp = candidate.originalTimestamp.ifBlank { existing.originalTimestamp },
         )
 
-        database.memoryEntryBox.put(merged)
-        database.memoryEntryBox.remove(existing.id)
+        database.store.runInTx {
+            database.memoryEntryBox.put(merged)
+            database.memoryEntryBox.remove(existing.id)
+        }
 
         return SynthesisResult.Merged(merged)
     }

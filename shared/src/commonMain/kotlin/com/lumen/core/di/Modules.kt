@@ -34,7 +34,7 @@ val memoryModule = module {
         KoogLlmCall(client, model)
     }
     single { SemanticCompressor(get()) }
-    single { SemanticSynthesizer(get(), get()) }
+    single { SemanticSynthesizer(get(), get(), get()) }
     single { MemoryManager(get(), get(), get(), get()) }
 }
 

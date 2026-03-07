@@ -22,14 +22,7 @@ class MemoryManager(
             createdAt = now,
             updatedAt = now,
         )
-        val result = synthesizer.synthesize(entry)
-        return when (result) {
-            is SynthesisResult.NoMatch, is SynthesisResult.Kept -> {
-                database.memoryEntryBox.put(entry)
-                entry
-            }
-            is SynthesisResult.Merged -> result.entry
-        }
+        return persistWithSynthesis(entry)
     }
 
     suspend fun recall(query: String, limit: Int = 5): List<MemoryEntry> {
@@ -68,14 +61,18 @@ class MemoryManager(
                 createdAt = now,
                 updatedAt = now,
             )
-            val result = synthesizer.synthesize(entry)
-            when (result) {
-                is SynthesisResult.NoMatch, is SynthesisResult.Kept -> {
-                    database.memoryEntryBox.put(entry)
-                    entry
-                }
-                is SynthesisResult.Merged -> result.entry
+            persistWithSynthesis(entry)
+        }
+    }
+
+    private suspend fun persistWithSynthesis(entry: MemoryEntry): MemoryEntry {
+        val result = synthesizer.synthesize(entry)
+        return when (result) {
+            is SynthesisResult.NoMatch, is SynthesisResult.Kept -> {
+                database.memoryEntryBox.put(entry)
+                entry
             }
+            is SynthesisResult.Merged -> result.entry
         }
     }
 

@@ -28,6 +28,15 @@ class SemanticSynthesizerTest {
         db = LumenDatabase(store)
     }
 
+    private val fakeEmbeddingClient = object : EmbeddingClient {
+        override suspend fun embed(text: String): FloatArray {
+            val seed = text.hashCode()
+            return FloatArray(1536) { i -> ((seed + i) % 100) / 100f }
+        }
+        override suspend fun embedBatch(texts: List<String>): List<FloatArray> =
+            texts.map { embed(it) }
+    }
+
     @AfterTest
     fun teardown() {
         db.close()
@@ -51,7 +60,7 @@ class SemanticSynthesizerTest {
 
     @Test
     fun synthesize_emptyDatabase_returnsNoMatch() = runBlocking {
-        val synthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" })
+        val synthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" }, fakeEmbeddingClient)
         val candidate = MemoryEntry(
             content = "User likes coffee",
             embedding = makeEmbedding(1f),
@@ -74,7 +83,7 @@ class SemanticSynthesizerTest {
         )
         db.memoryEntryBox.put(existing)
 
-        val synthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" }, similarityThreshold = 0.99f)
+        val synthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" }, fakeEmbeddingClient, similarityThreshold = 0.99f)
         val candidate = MemoryEntry(
             content = "User likes coffee",
             embedding = makeDifferentEmbedding(200f),
@@ -111,7 +120,7 @@ class SemanticSynthesizerTest {
             }
             """.trimIndent()
         }
-        val synthesizer = SemanticSynthesizer(db, fakeLlm, similarityThreshold = 0.5f)
+        val synthesizer = SemanticSynthesizer(db, fakeLlm, fakeEmbeddingClient, similarityThreshold = 0.5f)
 
         val candidate = MemoryEntry(
             content = "User prefers coffee without milk",
@@ -156,7 +165,7 @@ class SemanticSynthesizerTest {
         val fakeLlm = LlmCall { _, _ ->
             """{"action": "keep_both", "mergedContent": "", "reason": "Different facts"}"""
         }
-        val synthesizer = SemanticSynthesizer(db, fakeLlm, similarityThreshold = 0.5f)
+        val synthesizer = SemanticSynthesizer(db, fakeLlm, fakeEmbeddingClient, similarityThreshold = 0.5f)
 
         val candidate = MemoryEntry(
             content = "User's office has a coffee machine",
@@ -186,7 +195,7 @@ class SemanticSynthesizerTest {
         val fakeLlm = LlmCall { _, _ ->
             """{"action": "update", "mergedContent": "User lives in Munich (moved from Berlin)", "reason": "New info supersedes old"}"""
         }
-        val synthesizer = SemanticSynthesizer(db, fakeLlm, similarityThreshold = 0.5f)
+        val synthesizer = SemanticSynthesizer(db, fakeLlm, fakeEmbeddingClient, similarityThreshold = 0.5f)
 
         val candidate = MemoryEntry(
             content = "User moved to Munich",
@@ -218,7 +227,7 @@ class SemanticSynthesizerTest {
         val fakeLlm = LlmCall { _, _ ->
             """{"action": "merge", "mergedContent": "User enjoys coffee", "reason": "Same fact"}"""
         }
-        val synthesizer = SemanticSynthesizer(db, fakeLlm, similarityThreshold = 0.5f)
+        val synthesizer = SemanticSynthesizer(db, fakeLlm, fakeEmbeddingClient, similarityThreshold = 0.5f)
 
         val candidate = MemoryEntry(
             content = "User enjoys coffee",
@@ -246,7 +255,7 @@ class SemanticSynthesizerTest {
         db.memoryEntryBox.put(existing)
 
         val fakeLlm = LlmCall { _, _ -> "This is not valid JSON at all" }
-        val synthesizer = SemanticSynthesizer(db, fakeLlm, similarityThreshold = 0.5f)
+        val synthesizer = SemanticSynthesizer(db, fakeLlm, fakeEmbeddingClient, similarityThreshold = 0.5f)
 
         val candidate = MemoryEntry(
             content = "User enjoys coffee",
@@ -264,7 +273,7 @@ class SemanticSynthesizerTest {
 
     @Test
     fun parseDecision_validJson_returnsDecision() {
-        val synthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" })
+        val synthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" }, fakeEmbeddingClient)
         val decision = synthesizer.parseDecision(
             """{"action": "merge", "mergedContent": "combined", "reason": "same fact"}"""
         )
@@ -274,7 +283,7 @@ class SemanticSynthesizerTest {
 
     @Test
     fun parseDecision_jsonWrappedInMarkdown_returnsDecision() {
-        val synthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" })
+        val synthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" }, fakeEmbeddingClient)
         val decision = synthesizer.parseDecision(
             """
             Here is my decision:
