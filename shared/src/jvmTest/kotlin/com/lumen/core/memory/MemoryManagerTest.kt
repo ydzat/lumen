@@ -41,7 +41,8 @@ class MemoryManagerTest {
             .baseDirectory(tempDir)
             .build()
         db = LumenDatabase(store)
-        manager = MemoryManager(db, fakeEmbeddingClient)
+        val fakeCompressor = SemanticCompressor(LlmCall { _, _ -> "[]" })
+        manager = MemoryManager(db, fakeEmbeddingClient, fakeCompressor)
     }
 
     @AfterTest
