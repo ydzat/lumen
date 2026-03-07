@@ -14,12 +14,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,6 +33,18 @@ import org.koin.compose.koinInject
 
 @Composable
 fun HomeScreen() {
+    var showDigestHistory by remember { mutableStateOf(false) }
+
+    if (showDigestHistory) {
+        DigestHistoryScreen(onBack = { showDigestHistory = false })
+        return
+    }
+
+    HomeMainScreen(onViewAllDigests = { showDigestHistory = true })
+}
+
+@Composable
+private fun HomeMainScreen(onViewAllDigests: () -> Unit) {
     val db = koinInject<LumenDatabase>()
     val digestFormatter = koinInject<DigestFormatter>()
 
@@ -86,12 +100,21 @@ fun HomeScreen() {
 
         Spacer(Modifier.height(24.dp))
 
-        // Today's digest
-        Text(
-            text = "Today's Digest",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-        )
+        // Today's digest header with "View All" link
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Today's Digest",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            TextButton(onClick = onViewAllDigests) {
+                Text("View All")
+            }
+        }
 
         Spacer(Modifier.height(8.dp))
 

@@ -63,9 +63,33 @@ private fun defaultModelForProvider(provider: String): String = when (provider) 
     else -> ""
 }
 
+private enum class SettingsSubScreen {
+    Main,
+    Sources,
+    Projects,
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen() {
+    var subScreen by remember { mutableStateOf(SettingsSubScreen.Main) }
+
+    when (subScreen) {
+        SettingsSubScreen.Main -> SettingsMainScreen(
+            onNavigateToSources = { subScreen = SettingsSubScreen.Sources },
+            onNavigateToProjects = { subScreen = SettingsSubScreen.Projects },
+        )
+        SettingsSubScreen.Sources -> SourcesScreen(onBack = { subScreen = SettingsSubScreen.Main })
+        SettingsSubScreen.Projects -> ProjectsScreen(onBack = { subScreen = SettingsSubScreen.Main })
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsMainScreen(
+    onNavigateToSources: () -> Unit,
+    onNavigateToProjects: () -> Unit,
+) {
     val configStore = koinInject<ConfigStore>()
     val config = remember { configStore.load() }
 
@@ -225,6 +249,28 @@ fun SettingsScreen() {
                     }
                     Text("Test Connection")
                 }
+            }
+
+            Spacer(Modifier.height(32.dp))
+
+            Text("Data Management", style = MaterialTheme.typography.headlineSmall)
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = onNavigateToSources,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Manage Sources")
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onNavigateToProjects,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Manage Research Projects")
             }
         }
     }
