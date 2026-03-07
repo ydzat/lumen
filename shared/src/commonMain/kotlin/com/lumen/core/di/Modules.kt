@@ -9,6 +9,7 @@ import com.lumen.core.memory.LlmCall
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.RemoteEmbeddingClient
 import com.lumen.core.memory.SemanticCompressor
+import com.lumen.core.memory.SemanticSynthesizer
 import io.ktor.client.HttpClient
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -33,7 +34,8 @@ val memoryModule = module {
         KoogLlmCall(client, model)
     }
     single { SemanticCompressor(get()) }
-    single { MemoryManager(get(), get(), get()) }
+    single { SemanticSynthesizer(get(), get(), get()) }
+    single { MemoryManager(get(), get(), get(), get()) }
 }
 
 val researchModule = module {

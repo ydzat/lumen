@@ -156,7 +156,8 @@ class SemanticCompressorTest {
                     texts.map { embed(it) }
             }
             val compressor = SemanticCompressor(fakeLlm)
-            val manager = MemoryManager(db, fakeEmbedding, compressor)
+            val noopSynthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" }, fakeEmbedding, similarityThreshold = 1.0f)
+            val manager = MemoryManager(db, fakeEmbedding, compressor, noopSynthesizer)
 
             val entries = manager.storeFromConversation("User: I study AI and I like tea")
 
