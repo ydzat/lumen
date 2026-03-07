@@ -20,6 +20,7 @@ import com.lumen.research.collector.SourceManager
 import com.lumen.research.digest.DigestFormatter
 import com.lumen.research.digest.DigestGenerator
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -36,7 +37,13 @@ val companionModule = module {
 val memoryModule = module {
     factory<LlmCall> {
         val config = get<ConfigStore>().load().llm
-        val httpClient = HttpClient()
+        val httpClient = HttpClient {
+            install(HttpTimeout) {
+                connectTimeoutMillis = 30_000
+                requestTimeoutMillis = 120_000
+                socketTimeoutMillis = 120_000
+            }
+        }
         val client = LlmClientFactory.createClient(config, httpClient)
         val model = LlmClientFactory.resolveModel(config)
         KoogLlmCall(client, model)

@@ -2,6 +2,7 @@ package com.lumen.companion.agent.tools
 
 import ai.koog.agents.core.tools.SimpleTool
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.database.entities.Digest_
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -18,9 +19,11 @@ class GetTrendsTool(
 ) {
     override suspend fun execute(args: GetTrendsArgs): String {
         val cutoff = System.currentTimeMillis() - args.days.coerceAtLeast(1) * 86_400_000L
-        val recentDigests = db.digestBox.all
-            .filter { it.createdAt >= cutoff }
-            .sortedByDescending { it.createdAt }
+        val recentDigests = db.digestBox.query()
+            .greaterOrEqual(Digest_.createdAt, cutoff)
+            .order(Digest_.createdAt, io.objectbox.query.QueryBuilder.DESCENDING)
+            .build()
+            .use { it.find() }
 
         if (recentDigests.isEmpty()) {
             return "No digests found in the last ${args.days} day(s)."

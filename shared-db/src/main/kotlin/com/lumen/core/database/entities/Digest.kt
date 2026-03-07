@@ -12,5 +12,5 @@ data class Digest(
     var content: String = "",
     var sourceBreakdown: String = "",
     var projectId: Long = 0,
-    var createdAt: Long = 0
+    @Index var createdAt: Long = 0
 )

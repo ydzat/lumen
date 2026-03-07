@@ -1,6 +1,7 @@
 package com.lumen.research.analyzer
 
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.util.extractJsonObject
 import com.lumen.core.database.entities.Article
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.LlmCall
@@ -56,13 +57,6 @@ class ArticleAnalyzer(
         } catch (_: Exception) {
             "" to ""
         }
-    }
-
-    private fun extractJsonObject(text: String): String {
-        val start = text.indexOf('{')
-        val end = text.lastIndexOf('}')
-        if (start == -1 || end == -1 || end <= start) return "{}"
-        return text.substring(start, end + 1)
     }
 
     @Serializable

@@ -1,6 +1,7 @@
 package com.lumen.core.memory
 
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.util.extractJsonObject
 import com.lumen.core.database.entities.MemoryEntry
 import com.lumen.core.database.entities.MemoryEntry_
 import kotlinx.coroutines.async
@@ -130,10 +131,4 @@ Decompose this into specific sub-queries for memory retrieval.
         }
     }
 
-    private fun extractJsonObject(text: String): String {
-        val start = text.indexOf('{')
-        val end = text.lastIndexOf('}')
-        if (start == -1 || end == -1 || end <= start) return "{}"
-        return text.substring(start, end + 1)
-    }
 }

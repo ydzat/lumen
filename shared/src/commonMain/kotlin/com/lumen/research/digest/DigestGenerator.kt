@@ -2,8 +2,12 @@ package com.lumen.research.digest
 
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
+import com.lumen.core.database.entities.Article_
 import com.lumen.core.database.entities.Digest
+import com.lumen.core.database.entities.Digest_
+import io.objectbox.query.QueryBuilder
 import com.lumen.core.memory.LlmCall
+import com.lumen.core.util.extractJsonObject
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.util.dateToEpochRange
 import com.lumen.research.parseCsvSet
@@ -50,13 +54,20 @@ class DigestGenerator(
     }
 
     private fun findExisting(date: String, projectId: Long): Digest? {
-        return db.digestBox.all.firstOrNull { it.date == date && it.projectId == projectId }
+        return db.digestBox.query()
+            .equal(Digest_.date, date, QueryBuilder.StringOrder.CASE_SENSITIVE)
+            .equal(Digest_.projectId, projectId)
+            .build()
+            .use { it.findFirst() }
     }
 
     internal fun collectArticles(date: String, projectId: Long): List<Article> {
         val (startOfDay, endOfDay) = dateToEpochRange(date)
-        return db.articleBox.all
-            .filter { it.fetchedAt in startOfDay until endOfDay }
+        val articles = db.articleBox.query()
+            .between(Article_.fetchedAt, startOfDay, endOfDay - 1)
+            .build()
+            .use { it.find() }
+        return articles
             .filter { it.aiSummary.isNotBlank() }
             .filter { projectId == 0L || projectId.toString() in parseCsvSet(it.projectIds) }
             .sortedByDescending { it.aiRelevanceScore }
@@ -82,7 +93,8 @@ class DigestGenerator(
 
         return try {
             val response = llmCall.execute(SYSTEM_PROMPT, userPrompt)
-            parseDigestResponse(response)
+            val parsed = parseDigestResponse(response)
+            if (parsed.first.isBlank()) buildFallbackDigest(topArticles, date) else parsed
         } catch (_: Exception) {
             buildFallbackDigest(topArticles, date)
         }
@@ -148,13 +160,6 @@ class DigestGenerator(
         } catch (_: Exception) {
             // Memory storage is best-effort
         }
-    }
-
-    private fun extractJsonObject(text: String): String {
-        val start = text.indexOf('{')
-        val end = text.lastIndexOf('}')
-        if (start == -1 || end == -1 || end <= start) return "{}"
-        return text.substring(start, end + 1)
     }
 
     @Serializable
