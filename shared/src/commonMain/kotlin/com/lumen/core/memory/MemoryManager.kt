@@ -48,16 +48,21 @@ class MemoryManager(
     suspend fun storeFromConversation(conversation: String): List<MemoryEntry> {
         val extracted = compressor.compress(conversation, System.currentTimeMillis())
         return extracted.map { memory ->
-            store(
+            val embedding = embeddingClient.embed(memory.content)
+            val now = System.currentTimeMillis()
+            val entry = MemoryEntry(
                 content = memory.content,
                 category = memory.category,
                 source = "conversation",
-            ).also { entry ->
-                entry.keywords = memory.keywords.joinToString(",")
-                entry.importance = memory.importance
-                entry.originalTimestamp = memory.originalTimestamp
-                database.memoryEntryBox.put(entry)
-            }
+                embedding = embedding,
+                keywords = memory.keywords.joinToString(","),
+                importance = memory.importance,
+                originalTimestamp = memory.originalTimestamp,
+                createdAt = now,
+                updatedAt = now,
+            )
+            database.memoryEntryBox.put(entry)
+            entry
         }
     }
 
