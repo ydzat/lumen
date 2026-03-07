@@ -24,12 +24,16 @@ class ServerConfigStore(private val configDir: File) {
         get() = File(configDir, CONFIG_FILE_NAME)
 
     fun load(): ServerConfig {
-        if (!configFile.exists()) return ServerConfig()
-        return try {
-            json.decodeFromString<ServerConfig>(configFile.readText())
-        } catch (_: Exception) {
+        val config = if (!configFile.exists()) {
             ServerConfig()
+        } else {
+            try {
+                json.decodeFromString<ServerConfig>(configFile.readText())
+            } catch (_: Exception) {
+                ServerConfig()
+            }
         }
+        return EnvOverrides.applyToServerConfig(config)
     }
 
     fun save(config: ServerConfig) {
