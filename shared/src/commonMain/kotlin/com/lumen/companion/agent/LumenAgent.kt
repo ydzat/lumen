@@ -6,15 +6,22 @@ import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.params.LLMParams
+import com.lumen.companion.agent.tools.GetDigestTool
+import com.lumen.companion.agent.tools.GetTrendsTool
 import com.lumen.companion.agent.tools.RecallMemoryTool
+import com.lumen.companion.agent.tools.SearchArticlesTool
 import com.lumen.companion.agent.tools.StoreMemoryTool
 import com.lumen.core.config.LlmConfig
+import com.lumen.core.database.LumenDatabase
+import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.MemoryManager
 import io.ktor.client.HttpClient
 
 class LumenAgent(
     private val config: LlmConfig,
     private val memoryManager: MemoryManager? = null,
+    private val db: LumenDatabase? = null,
+    private val embeddingClient: EmbeddingClient? = null,
 ) {
 
     private val httpClient = HttpClient()
@@ -23,9 +30,18 @@ class LumenAgent(
 
     internal val tools: List<Tool<*, *>> = buildTools()
 
-    private fun buildTools(): List<Tool<*, *>> {
-        val manager = memoryManager ?: return emptyList()
-        return listOf(RecallMemoryTool(manager), StoreMemoryTool(manager))
+    private fun buildTools(): List<Tool<*, *>> = buildList {
+        if (memoryManager != null) {
+            add(RecallMemoryTool(memoryManager))
+            add(StoreMemoryTool(memoryManager))
+        }
+        if (db != null && embeddingClient != null) {
+            add(SearchArticlesTool(db, embeddingClient))
+        }
+        if (db != null) {
+            add(GetDigestTool(db))
+            add(GetTrendsTool(db))
+        }
     }
 
     suspend fun chat(message: String): ChatResult {
@@ -105,10 +121,13 @@ class LumenAgent(
     private companion object {
         private const val MAX_TOOL_ITERATIONS = 5
 
-        private const val SYSTEM_PROMPT = """You are Lumen, a personal AI assistant with memory capabilities.
-You have access to memory tools:
+        private const val SYSTEM_PROMPT = """You are Lumen, a personal AI assistant with memory and research capabilities.
+You have access to the following tools:
 - recall_memory: Search your memories when the user asks about past conversations or stored information.
 - store_memory: Save important facts, preferences, or information the user shares.
+- search_articles: Search research articles by semantic similarity to a query.
+- get_digest: Retrieve the research digest for a specific date.
+- get_trends: Summarize recent research trends from stored digests.
 Use these tools when contextually appropriate."""
     }
 }
