@@ -167,6 +167,23 @@ class ConversationManagerTest {
     }
 
     @Test
+    fun updatePersona_changesPersonaId() {
+        val conversation = manager.createConversation("Chat", personaId = 1)
+
+        manager.updatePersona(conversation.id, 2L)
+
+        val updated = manager.getConversation(conversation.id)
+        assertNotNull(updated)
+        assertEquals(2L, updated.personaId)
+        assertTrue(updated.updatedAt >= conversation.updatedAt)
+    }
+
+    @Test
+    fun updatePersona_withNonExistentId_doesNotThrow() {
+        manager.updatePersona(99999L, 1L)
+    }
+
+    @Test
     fun addMultipleMessages_incrementsCountCorrectly() {
         val conversation = manager.createConversation("Chat")
         manager.addMessage(conversation.id, "user", "One")

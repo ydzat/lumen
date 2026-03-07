@@ -40,7 +40,7 @@ class ModulesTest {
 
     @Test
     fun companionModule_providesLumenAgent() {
-        val agent = GlobalContext.get().get<LumenAgent> { parametersOf(0L) }
+        val agent = GlobalContext.get().get<LumenAgent> { parametersOf(0L, 0L) }
         assertNotNull(agent)
         agent.close()
     }
