@@ -13,6 +13,8 @@ djl-tokenizers = "0.31.1"
 rssparser = "6.1.0"
 androidx-activity-compose = "1.9.3"
 androidx-work = "2.10.0"
+pdfbox = "3.0.4"
+pdfbox-android = "2.0.27.0"
 
 [libraries]
 # Koog AI Agent
@@ -59,6 +61,10 @@ onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android"
 
 # DJL Tokenizers (HuggingFace tokenizer JNI bindings)
 djl-tokenizers = { module = "ai.djl.huggingface:tokenizers", version.ref = "djl-tokenizers" }
+
+# Apache PDFBox (PDF text extraction)
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
+pdfbox-android = { module = "com.tom-roush:pdfbox-android", version.ref = "pdfbox-android" }
 
 # RSS Parser (KMP)
 rssparser = { module = "com.prof18.rssparser:rssparser", version.ref = "rssparser" }
