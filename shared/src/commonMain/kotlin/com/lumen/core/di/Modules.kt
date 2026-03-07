@@ -14,6 +14,8 @@ import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.collector.SourceManager
+import com.lumen.research.digest.DigestFormatter
+import com.lumen.research.digest.DigestGenerator
 import io.ktor.client.HttpClient
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -46,6 +48,8 @@ val researchModule = module {
     single { ProjectManager(get(), get()) }
     single { ArticleAnalyzer(get(), get(), get()) }
     single { RelevanceScorer(get(), getOrNull()) }
+    single { DigestGenerator(get(), get(), getOrNull()) }
+    single { DigestFormatter() }
 }
 
 expect val platformModule: Module
