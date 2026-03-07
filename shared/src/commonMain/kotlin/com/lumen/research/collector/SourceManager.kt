@@ -15,6 +15,7 @@ class SourceManager(private val db: LumenDatabase) {
     }
 
     fun update(source: Source): Source {
+        require(source.id != 0L) { "Cannot update a source without an id" }
         db.sourceBox.put(source)
         return db.sourceBox.get(source.id)
     }
