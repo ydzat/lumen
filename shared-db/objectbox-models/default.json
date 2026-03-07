@@ -342,10 +342,246 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "6:240756537736968805",
+      "lastPropertyId": "7:4092362793311177868",
+      "name": "Conversation",
+      "properties": [
+        {
+          "id": "1:2731150710373582808",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7870046011322871225",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "3:4252595486577391478",
+          "name": "personaId",
+          "type": 6
+        },
+        {
+          "id": "4:8189590622650041800",
+          "name": "projectId",
+          "type": 6
+        },
+        {
+          "id": "5:8168406354662041847",
+          "name": "messageCount",
+          "type": 5
+        },
+        {
+          "id": "6:1446778923716633300",
+          "name": "createdAt",
+          "indexId": "11:2832938370493950815",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "7:4092362793311177868",
+          "name": "updatedAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "7:1638215390547182605",
+      "lastPropertyId": "7:6836727054636615056",
+      "name": "Document",
+      "properties": [
+        {
+          "id": "1:6764876889536553247",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3315298979606022292",
+          "name": "projectId",
+          "indexId": "12:1188335089156303466",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:7238597986343505645",
+          "name": "filename",
+          "type": 9
+        },
+        {
+          "id": "4:3470053274666783176",
+          "name": "mimeType",
+          "type": 9
+        },
+        {
+          "id": "5:5820869281047441904",
+          "name": "textContent",
+          "type": 9
+        },
+        {
+          "id": "6:5003830033356773695",
+          "name": "chunkCount",
+          "type": 5
+        },
+        {
+          "id": "7:6836727054636615056",
+          "name": "createdAt",
+          "indexId": "13:3819453489919627266",
+          "type": 6,
+          "flags": 8
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "8:1374548346464271664",
+      "lastPropertyId": "6:3834482296854583317",
+      "name": "DocumentChunk",
+      "properties": [
+        {
+          "id": "1:517595935001894661",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2455106373098425012",
+          "name": "documentId",
+          "indexId": "14:4085443156166092025",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:5001123545664535239",
+          "name": "projectId",
+          "type": 6
+        },
+        {
+          "id": "4:1749401329481802917",
+          "name": "chunkIndex",
+          "type": 5
+        },
+        {
+          "id": "5:1511000103442984693",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "6:3834482296854583317",
+          "name": "embedding",
+          "indexId": "15:5380424047714635004",
+          "type": 28,
+          "flags": 8
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "9:2801143473473493661",
+      "lastPropertyId": "7:7814182496302732131",
+      "name": "Message",
+      "properties": [
+        {
+          "id": "1:8935306247913155106",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2259301221892203673",
+          "name": "conversationId",
+          "indexId": "16:2116070813892913428",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:7506229866732404865",
+          "name": "role",
+          "type": 9
+        },
+        {
+          "id": "4:6688694855999805016",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "5:103531120558572076",
+          "name": "toolName",
+          "type": 9
+        },
+        {
+          "id": "6:7069697735969034680",
+          "name": "toolArgs",
+          "type": 9
+        },
+        {
+          "id": "7:7814182496302732131",
+          "name": "createdAt",
+          "indexId": "17:7105360363318078108",
+          "type": 6,
+          "flags": 8
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "10:1935128386715263710",
+      "lastPropertyId": "8:5810961971394849317",
+      "name": "Persona",
+      "properties": [
+        {
+          "id": "1:8195791825894979810",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3464084357767366677",
+          "name": "name",
+          "indexId": "18:6207228239995082588",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:3063097827421331187",
+          "name": "systemPrompt",
+          "type": 9
+        },
+        {
+          "id": "4:2492914244989466611",
+          "name": "greeting",
+          "type": 9
+        },
+        {
+          "id": "5:5864085426335363853",
+          "name": "avatarEmoji",
+          "type": 9
+        },
+        {
+          "id": "6:4811946987521742272",
+          "name": "isBuiltIn",
+          "type": 1
+        },
+        {
+          "id": "7:2116580515961758709",
+          "name": "isActive",
+          "type": 1
+        },
+        {
+          "id": "8:5810961971394849317",
+          "name": "createdAt",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "5:6135864324703906304",
-  "lastIndexId": "10:7485888030327260848",
+  "lastEntityId": "10:1935128386715263710",
+  "lastIndexId": "18:6207228239995082588",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
