@@ -16,7 +16,8 @@ fun Application.configureAuth() {
     val configStore = ServerConfigStore(serverDir)
     val accessToken = configStore.ensureAccessToken()
 
-    log.info("=== Lumen Server Access Token: $accessToken ===")
+    val masked = if (accessToken.length > 4) accessToken.take(4) + "****" else "****"
+    log.info("=== Lumen Server Access Token: $masked ===")
 
     configureAuth(accessToken)
 }

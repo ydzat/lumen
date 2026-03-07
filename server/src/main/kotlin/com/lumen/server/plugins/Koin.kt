@@ -12,6 +12,10 @@ import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.ModelResourceLoader
 import com.lumen.core.memory.OnnxEmbeddingClient
 import com.lumen.research.collector.PlatformScheduler
+import com.lumen.server.config.ServerConfigStore
+import com.lumen.server.notification.NtfyNotifier
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import org.koin.core.module.dsl.onClose
@@ -35,6 +39,9 @@ fun Application.configureKoin() {
             createLumenDatabase(PlatformDatabaseConfig(dbDir))
         } withOptions { onClose { it?.close() } }
         single { PlatformScheduler(get()) }
+        single { ServerConfigStore(serverDir) }
+        single { HttpClient(CIO) } withOptions { onClose { it?.close() } }
+        single { NtfyNotifier(get(), get()) }
     }
 
     install(Koin) {

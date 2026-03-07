@@ -1,5 +1,6 @@
 package com.lumen.research.collector
 
+import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.Digest
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.analyzer.ArticleAnalyzer
@@ -40,6 +41,7 @@ class CollectorManager(
             analyzed = analyzed.size,
             scored = scored.size,
             digest = digest,
+            scoredArticles = scored,
         )
     }
 
@@ -51,4 +53,5 @@ data class PipelineResult(
     val analyzed: Int,
     val scored: Int,
     val digest: Digest?,
+    val scoredArticles: List<Article> = emptyList(),
 )

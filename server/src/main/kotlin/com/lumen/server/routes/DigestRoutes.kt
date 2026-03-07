@@ -4,6 +4,7 @@ import com.lumen.research.collector.CollectorManager
 import com.lumen.research.digest.DigestGenerator
 import com.lumen.server.dto.AnalyzeResponse
 import com.lumen.server.dto.toDto
+import com.lumen.server.notification.NtfyNotifier
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
@@ -30,7 +31,12 @@ fun Route.digestRoutes() {
 
     post("/analyze/manual") {
         val collectorManager = call.application.koinGet<CollectorManager>()
+        val notifier = call.application.koinGet<NtfyNotifier>()
         val result = collectorManager.runPipeline()
+
+        result.digest?.let { notifier.notifyDigest(it) }
+        notifier.notifyHighRelevanceArticles(result.scoredArticles)
+
         call.respond(AnalyzeResponse(
             fetched = result.fetched,
             analyzed = result.analyzed,
