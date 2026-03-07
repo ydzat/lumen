@@ -8,6 +8,8 @@ import java.util.UUID
 @Serializable
 data class ServerConfig(
     val accessToken: String = "",
+    val ntfyServerUrl: String = "",
+    val ntfyTopic: String = "",
 )
 
 class ServerConfigStore(private val configDir: File) {

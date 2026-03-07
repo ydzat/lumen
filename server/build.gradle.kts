@@ -22,10 +22,13 @@ dependencies {
     implementation(libs.ktor.server.call.logging)
     implementation(libs.ktor.serialization.json)
 
+    implementation(libs.ktor.client.cio)
+
     implementation(libs.koin.core)
     implementation(libs.koin.ktor)
     implementation(libs.coroutines.core)
 
     testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlin.test)
 }

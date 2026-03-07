@@ -15,7 +15,12 @@ import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.collector.SourceManager
 import com.lumen.research.digest.DigestGenerator
+import com.lumen.server.config.ServerConfigStore
 import com.lumen.server.dto.AnalyzeResponse
+import com.lumen.server.notification.NtfyNotifier
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
 import com.lumen.server.dto.ArticleDto
 import com.lumen.server.dto.ArticleListResponse
 import com.lumen.server.dto.DigestDto
@@ -100,6 +105,8 @@ class ResearchRoutesTest {
         single { RelevanceScorer(get(), null) }
         single { DigestGenerator(get(), get(), null) }
         single { CollectorManager(get(), get(), get(), get()) }
+        single { ServerConfigStore(tempDir) }
+        single { NtfyNotifier(HttpClient(MockEngine { respond("ok") }), get()) }
     }
 
     // --- Articles ---
