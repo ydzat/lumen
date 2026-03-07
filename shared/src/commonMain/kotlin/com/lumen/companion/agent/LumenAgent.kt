@@ -13,6 +13,7 @@ import com.lumen.companion.agent.tools.SearchArticlesTool
 import com.lumen.companion.agent.tools.StoreMemoryTool
 import com.lumen.companion.conversation.ConversationManager
 import com.lumen.core.config.LlmConfig
+import com.lumen.core.config.UserPreferences
 import com.lumen.core.database.entities.Persona
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.memory.EmbeddingClient
@@ -30,6 +31,7 @@ class LumenAgent(
     private val conversationManager: ConversationManager? = null,
     private val contextWindowBuilder: ContextWindowBuilder? = null,
     private val persona: Persona? = null,
+    private val userPreferences: UserPreferences = UserPreferences(),
 ) {
 
     private val httpClient = HttpClient {
@@ -111,8 +113,13 @@ class LumenAgent(
             val userMsg = cm.addMessage(conversationId, "user", userMessage)
             emit(ChatEvent.UserMessageSaved(userMsg.id))
 
+            val effectiveSystemPrompt = buildSystemPromptWithRecall(userMessage)?.let { (prompt, count) ->
+                emit(ChatEvent.MemoryRecalled(count))
+                prompt
+            } ?: systemPrompt
+
             val allMessages = cm.getMessages(conversationId)
-            val contextMessages = cwb.buildContext(allMessages, systemPrompt)
+            val contextMessages = cwb.buildContext(allMessages, effectiveSystemPrompt)
 
             val conversationMessages = contextMessages.toMutableList<Message>()
             var iterations = 0
@@ -157,18 +164,51 @@ class LumenAgent(
         emit(ChatEvent.Done)
     }
 
+    internal suspend fun buildSystemPromptWithRecall(
+        userMessage: String,
+    ): Pair<String, Int>? {
+        if (!userPreferences.memoryAutoRecall) return null
+        val mm = memoryManager ?: return null
+
+        val memories = try {
+            mm.recall(userMessage, limit = AUTO_RECALL_LIMIT)
+        } catch (_: Exception) {
+            return null
+        }
+        if (memories.isEmpty()) return null
+
+        val memoryContext = memories.joinToString("\n") { "- ${it.content}" }
+        val personaPrompt = persona?.systemPrompt ?: DEFAULT_SYSTEM_PROMPT
+        val recallSection = "\n\nContext from previous conversations:\n$memoryContext"
+
+        val prompt = if (tools.isEmpty()) {
+            personaPrompt + recallSection
+        } else {
+            val toolDescriptions = tools.joinToString("\n") { "- ${it.name}: ${it.descriptor.description}" }
+            """$personaPrompt$recallSection
+
+Available tools:
+$toolDescriptions
+Use these tools when contextually appropriate."""
+        }
+
+        return prompt to memories.size
+    }
+
     private suspend fun maybeExtractMemories(
         conversationId: Long,
         cm: ConversationManager,
     ): Int? {
+        val interval = userPreferences.memoryExtractionInterval
+        if (interval <= 0) return null
         val mm = memoryManager ?: return null
         val conversation = cm.getConversation(conversationId) ?: return null
         if (conversation.messageCount == 0 ||
-            conversation.messageCount % MEMORY_EXTRACTION_INTERVAL != 0
+            conversation.messageCount % interval != 0
         ) return null
 
         val messages = cm.getMessages(conversationId)
-        val recentMessages = messages.takeLast(MEMORY_EXTRACTION_INTERVAL * 2)
+        val recentMessages = messages.takeLast(interval * 2)
         val conversationText = recentMessages
             .filter { it.role == "user" || it.role == "assistant" }
             .joinToString("\n") { "${it.role}: ${it.content}" }
@@ -234,7 +274,7 @@ Use these tools when contextually appropriate."""
     companion object {
         internal const val DEFAULT_SYSTEM_PROMPT = "You are Lumen, a personal AI assistant."
         private const val MAX_TOOL_ITERATIONS = 5
-        private const val MEMORY_EXTRACTION_INTERVAL = 10
+        private const val AUTO_RECALL_LIMIT = 3
         private const val CONNECT_TIMEOUT_MS = 30_000L
         private const val REQUEST_TIMEOUT_MS = 120_000L
     }
