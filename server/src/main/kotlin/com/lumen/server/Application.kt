@@ -1,5 +1,6 @@
 package com.lumen.server
 
+import com.lumen.server.plugins.configureAuth
 import com.lumen.server.plugins.configureCors
 import com.lumen.server.plugins.configureErrorHandling
 import com.lumen.server.plugins.configureKoin
@@ -21,6 +22,7 @@ fun Application.module() {
     configureErrorHandling()
     configureCors()
     configureLogging()
+    configureAuth()
     configureKoin()
     routing {
         healthRoutes()
