@@ -60,6 +60,7 @@ kotlin {
                 implementation(libs.ktor.client.cio)
                 implementation(libs.koin.android)
                 implementation(libs.onnxruntime.android)
+                implementation(libs.androidx.work.runtime)
             }
         }
 

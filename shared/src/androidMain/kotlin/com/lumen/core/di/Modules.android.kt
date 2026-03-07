@@ -7,6 +7,7 @@ import com.lumen.core.database.createLumenDatabase
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.ModelResourceLoader
 import com.lumen.core.memory.OnnxEmbeddingClient
+import com.lumen.research.collector.PlatformScheduler
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.onClose
 import org.koin.core.module.dsl.withOptions
@@ -17,4 +18,5 @@ actual val platformModule: Module = module {
     single { ModelResourceLoader(get()) }
     single<EmbeddingClient> { OnnxEmbeddingClient(get()) } withOptions { onClose { (it as? OnnxEmbeddingClient)?.close() } }
     single { createLumenDatabase(PlatformDatabaseConfig(get())) }
+    single { PlatformScheduler(get()) }
 }

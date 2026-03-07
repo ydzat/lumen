@@ -12,6 +12,7 @@ import com.lumen.core.memory.SemanticSynthesizer
 import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
+import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.collector.SourceManager
 import com.lumen.research.digest.DigestFormatter
@@ -50,6 +51,7 @@ val researchModule = module {
     single { RelevanceScorer(get(), getOrNull()) }
     single { DigestGenerator(get(), get(), getOrNull()) }
     single { DigestFormatter() }
+    single { CollectorManager(get(), get(), get(), get()) }
 }
 
 expect val platformModule: Module
