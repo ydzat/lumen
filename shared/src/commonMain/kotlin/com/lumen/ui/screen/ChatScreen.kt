@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -399,6 +400,7 @@ private fun ConversationChatScreen(
     onBack: () -> Unit,
 ) {
     val conversationManager = koinInject<ConversationManager>()
+    val personaManager = koinInject<PersonaManager>()
     val agentFactory = getKoin()
 
     val scope = rememberCoroutineScope()
@@ -414,10 +416,17 @@ private fun ConversationChatScreen(
     var typewriterCounter by remember { mutableStateOf(0) }
     var typewriterDisplay by remember { mutableStateOf("") }
     var typewriterDone by remember { mutableStateOf(true) }
-    val agent = remember {
-        agentFactory.get<LumenAgent> { parametersOf(initialConversation?.projectId ?: 0L) }
+    var currentPersonaId by remember { mutableStateOf(initialConversation?.personaId ?: 0L) }
+    var showPersonaPicker by remember { mutableStateOf(false) }
+    val currentPersonaName = remember(currentPersonaId) {
+        if (currentPersonaId > 0) personaManager.get(currentPersonaId)?.name ?: "Default" else "Default"
     }
-    DisposableEffect(Unit) { onDispose { agent.close() } }
+    val agent = remember(currentPersonaId) {
+        agentFactory.get<LumenAgent> {
+            parametersOf(initialConversation?.projectId ?: 0L, currentPersonaId)
+        }
+    }
+    DisposableEffect(agent) { onDispose { agent.close() } }
 
     fun loadMessages() {
         conversation = conversationManager.getConversation(conversationId)
@@ -528,15 +537,28 @@ private fun ConversationChatScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = conversation?.title ?: "Chat",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Column {
+                        Text(
+                            text = conversation?.title ?: "Chat",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = currentPersonaName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showPersonaPicker = true }) {
+                        Icon(Icons.Default.Person, contentDescription = "Change persona")
                     }
                 },
             )
@@ -584,6 +606,53 @@ private fun ConversationChatScreen(
                 isLoading = isLoading,
             )
         }
+    }
+
+    // Persona picker dialog
+    if (showPersonaPicker) {
+        val personas = remember { personaManager.listAll() }
+        AlertDialog(
+            onDismissRequest = { showPersonaPicker = false },
+            title = { Text("Select Persona") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Default option
+                    TextButton(
+                        onClick = {
+                            currentPersonaId = 0L
+                            conversationManager.updatePersona(conversationId, 0L)
+                            showPersonaPicker = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = "Default",
+                            fontWeight = if (currentPersonaId == 0L) FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    personas.forEach { persona ->
+                        TextButton(
+                            onClick = {
+                                currentPersonaId = persona.id
+                                conversationManager.updatePersona(conversationId, persona.id)
+                                showPersonaPicker = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = persona.name,
+                                fontWeight = if (currentPersonaId == persona.id) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPersonaPicker = false }) { Text("Cancel") }
+            },
+        )
     }
 }
 

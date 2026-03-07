@@ -96,4 +96,11 @@ class ConversationManager(private val db: LumenDatabase) {
             conversation.copy(title = title, updatedAt = System.currentTimeMillis())
         )
     }
+
+    fun updatePersona(id: Long, personaId: Long) {
+        val conversation = db.conversationBox.get(id) ?: return
+        db.conversationBox.put(
+            conversation.copy(personaId = personaId, updatedAt = System.currentTimeMillis())
+        )
+    }
 }
