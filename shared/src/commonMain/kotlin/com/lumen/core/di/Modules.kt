@@ -9,6 +9,7 @@ import com.lumen.core.memory.LlmCall
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.SemanticCompressor
 import com.lumen.core.memory.SemanticSynthesizer
+import com.lumen.research.ProjectManager
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.collector.SourceManager
 import io.ktor.client.HttpClient
@@ -40,6 +41,7 @@ val memoryModule = module {
 val researchModule = module {
     single { RssCollector(get()) }
     single { SourceManager(get()) }
+    single { ProjectManager(get(), get()) }
 }
 
 expect val platformModule: Module
