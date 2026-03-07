@@ -55,12 +55,14 @@ fun ProjectsScreen(onBack: () -> Unit) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     var projects by remember { mutableStateOf<List<ResearchProject>>(emptyList()) }
+    var articleCounts by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var editingProject by remember { mutableStateOf<ResearchProject?>(null) }
     var deletingProject by remember { mutableStateOf<ResearchProject?>(null) }
 
     fun loadProjects() {
         projects = projectManager.listAll()
+        articleCounts = projects.associate { it.id to projectManager.getArticlesForProject(it.id).size }
     }
 
     LaunchedEffect(Unit) { loadProjects() }
@@ -98,7 +100,7 @@ fun ProjectsScreen(onBack: () -> Unit) {
                 items(projects, key = { it.id }) { project ->
                     ProjectCard(
                         project = project,
-                        articleCount = projectManager.getArticlesForProject(project.id).size,
+                        articleCount = articleCounts[project.id] ?: 0,
                         onSetActive = {
                             projectManager.setActive(project.id)
                             loadProjects()
