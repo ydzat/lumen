@@ -557,7 +557,10 @@ private fun ConversationChatScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showPersonaPicker = true }) {
+                    IconButton(
+                        onClick = { showPersonaPicker = true },
+                        enabled = !isLoading,
+                    ) {
                         Icon(Icons.Default.Person, contentDescription = "Change persona")
                     }
                 },
