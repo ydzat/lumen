@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -408,8 +409,11 @@ private fun ConversationChatScreen(
     var inputText by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var typewriterTarget by remember { mutableStateOf("") }
+    var typewriterCounter by remember { mutableStateOf(0) }
     var typewriterDisplay by remember { mutableStateOf("") }
     var typewriterDone by remember { mutableStateOf(true) }
+    val agent = remember { agentFactory.get<LumenAgent>() }
+    DisposableEffect(Unit) { onDispose { agent.close() } }
 
     fun loadMessages() {
         conversation = conversationManager.getConversation(conversationId)
@@ -432,8 +436,8 @@ private fun ConversationChatScreen(
 
     LaunchedEffect(conversationId) { loadMessages() }
 
-    // Typewriter effect
-    LaunchedEffect(typewriterTarget) {
+    // Typewriter effect — counter key ensures re-trigger for duplicate responses
+    LaunchedEffect(typewriterTarget, typewriterCounter) {
         if (typewriterTarget.isEmpty()) return@LaunchedEffect
         typewriterDone = false
         typewriterDisplay = ""
@@ -464,7 +468,6 @@ private fun ConversationChatScreen(
         isLoading = true
 
         scope.launch {
-            val agent = agentFactory.get<LumenAgent>()
             try {
                 withContext(Dispatchers.Default) {
                     agent.chatStream(conversationId, text)
@@ -493,6 +496,7 @@ private fun ConversationChatScreen(
                             val msg = Message(role = "assistant", content = event.text)
                             uiItems.add(ChatUiItem.AssistantMessage(msg, ""))
                             typewriterTarget = event.text
+                            typewriterCounter++
                         }
                         is ChatEvent.MemoryExtracted -> {
                             uiItems.add(ChatUiItem.StatusInfo("Extracted ${event.count} memories"))
@@ -508,7 +512,6 @@ private fun ConversationChatScreen(
             } catch (e: Exception) {
                 snackbarHostState.showSnackbar(e.message ?: "Unknown error")
             } finally {
-                agent.close()
                 isLoading = false
             }
         }
