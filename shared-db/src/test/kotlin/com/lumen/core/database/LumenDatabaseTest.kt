@@ -6,6 +6,8 @@ import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.entities.MemoryEntry
 import com.lumen.core.database.entities.MyObjectBox
 import com.lumen.core.database.entities.ResearchProject
+import com.lumen.core.database.entities.Article_
+import com.lumen.core.database.entities.Digest_
 import com.lumen.core.database.entities.Source
 import io.objectbox.query.QueryBuilder
 import java.io.File
@@ -166,7 +168,7 @@ class LumenDatabaseTest {
         db.articleBox.put(Article(title = "Paper 1", url = url))
 
         val query = db.articleBox.query()
-            .equal(com.lumen.core.database.entities.Article_.url, url, QueryBuilder.StringOrder.CASE_SENSITIVE)
+            .equal(Article_.url, url, QueryBuilder.StringOrder.CASE_SENSITIVE)
             .build()
         val results = query.find()
         query.close()
@@ -195,7 +197,7 @@ class LumenDatabaseTest {
         assertEquals(1L, retrieved.projectId)
 
         val query = db.digestBox.query()
-            .equal(com.lumen.core.database.entities.Digest_.date, "2026-03-07", QueryBuilder.StringOrder.CASE_SENSITIVE)
+            .equal(Digest_.date, "2026-03-07", QueryBuilder.StringOrder.CASE_SENSITIVE)
             .build()
         val byDate = query.find()
         query.close()
