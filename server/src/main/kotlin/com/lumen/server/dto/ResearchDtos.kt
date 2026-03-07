@@ -98,6 +98,20 @@ data class AnalyzeResponse(
 )
 
 @Serializable
+data class TrendsResponse(
+    val days: Int,
+    val digests: List<TrendsDigestEntry>,
+)
+
+@Serializable
+data class TrendsDigestEntry(
+    val date: String,
+    val title: String,
+    val content: String,
+    val projectId: Long,
+)
+
+@Serializable
 data class RefreshResponse(
     val fetched: Int,
 )

@@ -19,11 +19,13 @@ import com.lumen.server.config.ServerConfigStore
 import com.lumen.server.dto.AnalyzeResponse
 import com.lumen.server.dto.ArticleDto
 import com.lumen.server.dto.ArticleListResponse
+import com.lumen.core.database.entities.Digest
 import com.lumen.server.dto.DigestDto
 import com.lumen.server.dto.ProjectCreateRequest
 import com.lumen.server.dto.ProjectDto
 import com.lumen.server.dto.RefreshResponse
 import com.lumen.server.dto.SourceCreateRequest
+import com.lumen.server.dto.TrendsResponse
 import com.lumen.server.notification.NtfyNotifier
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -500,6 +502,81 @@ class ResearchRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val body = json.decodeFromString<AnalyzeResponse>(response.bodyAsText())
         assertEquals(0, body.fetched)
+    }
+
+    @Test
+    fun getTrends_returnsRecentDigests() = testApplication {
+        application {
+            configureSerialization()
+            configureErrorHandling()
+            configureAuth(testToken)
+            install(Koin) { modules(testKoinModule()) }
+            routing {
+                authenticate(AUTH_BEARER) {
+                    route("/api") { digestRoutes() }
+                }
+            }
+        }
+
+        db.digestBox.put(
+            Digest(
+                date = "2026-03-07",
+                title = "Test Digest",
+                content = "Some trends here",
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
+
+        val response = client.get("/api/digest/trends?days=7") {
+            bearerAuth(testToken)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = json.decodeFromString<TrendsResponse>(response.bodyAsText())
+        assertEquals(7, body.days)
+        assertEquals(1, body.digests.size)
+        assertEquals("Test Digest", body.digests[0].title)
+    }
+
+    @Test
+    fun getTrends_invalidDays_returns400() = testApplication {
+        application {
+            configureSerialization()
+            configureErrorHandling()
+            configureAuth(testToken)
+            install(Koin) { modules(testKoinModule()) }
+            routing {
+                authenticate(AUTH_BEARER) {
+                    route("/api") { digestRoutes() }
+                }
+            }
+        }
+
+        val response = client.get("/api/digest/trends?days=0") {
+            bearerAuth(testToken)
+        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun getTrends_defaultDays_returns7() = testApplication {
+        application {
+            configureSerialization()
+            configureErrorHandling()
+            configureAuth(testToken)
+            install(Koin) { modules(testKoinModule()) }
+            routing {
+                authenticate(AUTH_BEARER) {
+                    route("/api") { digestRoutes() }
+                }
+            }
+        }
+
+        val response = client.get("/api/digest/trends") {
+            bearerAuth(testToken)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = json.decodeFromString<TrendsResponse>(response.bodyAsText())
+        assertEquals(7, body.days)
     }
 
     // --- Auth ---
