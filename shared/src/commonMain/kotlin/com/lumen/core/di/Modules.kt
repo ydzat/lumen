@@ -8,6 +8,7 @@ import com.lumen.companion.persona.PersonaManager
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.document.DocumentIngestionService
+import com.lumen.core.document.DocumentManager
 import com.lumen.core.document.DocumentParser
 import com.lumen.core.document.TextChunker
 import com.lumen.core.memory.EmbeddingClient
@@ -81,6 +82,7 @@ val documentModule = module {
     single { DocumentParser() }
     single { TextChunker() }
     single { DocumentIngestionService(get(), get(), get(), get()) }
+    single { DocumentManager(get(), get()) }
 }
 
 expect val platformModule: Module
