@@ -6,6 +6,7 @@ import com.lumen.core.database.createLumenDatabase
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.ModelResourceLoader
 import com.lumen.core.memory.OnnxEmbeddingClient
+import com.lumen.research.collector.PlatformScheduler
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.onClose
 import org.koin.core.module.dsl.withOptions
@@ -20,4 +21,5 @@ actual val platformModule: Module = module {
         val dbDir = File(System.getProperty("user.home"), ".lumen/db")
         createLumenDatabase(PlatformDatabaseConfig(dbDir))
     } withOptions { onClose { it?.close() } }
+    single { PlatformScheduler(get()) }
 }

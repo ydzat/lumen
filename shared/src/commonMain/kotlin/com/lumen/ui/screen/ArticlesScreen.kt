@@ -57,7 +57,7 @@ import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
-import com.lumen.research.collector.RssCollector
+import com.lumen.research.collector.CollectorManager
 import com.lumen.research.parseCsvSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -75,7 +75,7 @@ private enum class SortMode(val label: String) {
 fun ArticlesScreen() {
     val db = koinInject<LumenDatabase>()
     val projectManager = koinInject<ProjectManager>()
-    val rssCollector = koinInject<RssCollector>()
+    val collectorManager = koinInject<CollectorManager>()
     val memoryManager = getKoin().getOrNull<MemoryManager>()
 
     val scope = rememberCoroutineScope()
@@ -159,12 +159,12 @@ fun ArticlesScreen() {
                         isRefreshing = true
                         scope.launch {
                             try {
-                                val newArticles = withContext(Dispatchers.Default) {
-                                    rssCollector.fetchAll()
+                                val result = withContext(Dispatchers.Default) {
+                                    collectorManager.runNow()
                                 }
                                 loadData()
                                 snackbarHostState.showSnackbar(
-                                    "Fetched ${newArticles.size} new article(s)"
+                                    "Fetched ${result.fetched}, analyzed ${result.analyzed} article(s)"
                                 )
                             } catch (e: Exception) {
                                 snackbarHostState.showSnackbar(
