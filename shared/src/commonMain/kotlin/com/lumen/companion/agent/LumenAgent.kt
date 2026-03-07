@@ -65,9 +65,7 @@ class LumenAgent(
         }
 
         val messages = buildList {
-            if (tools.isNotEmpty()) {
-                add(Message.System(systemPrompt, RequestMetaInfo.Empty))
-            }
+            add(Message.System(systemPrompt, RequestMetaInfo.Empty))
             add(Message.User(message, RequestMetaInfo.Empty))
         }
 

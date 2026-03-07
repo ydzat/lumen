@@ -35,13 +35,12 @@ class SystemPromptTest {
     }
 
     @Test
-    fun buildSystemPrompt_withPersonaAndTools_concatenatesPromptWithTools() {
+    fun buildSystemPrompt_withNoTools_excludesToolSection() {
         val persona = Persona(
             id = 1,
             name = "Test Bot",
             systemPrompt = "You are a test bot.",
         )
-        // Agent with no tools — persona prompt only
         val agent = LumenAgent(config = LlmConfig(apiKey = "test"), persona = persona)
         try {
             assertEquals("You are a test bot.", agent.systemPrompt)

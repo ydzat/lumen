@@ -6,7 +6,7 @@ import com.lumen.core.database.entities.Persona
 class PersonaManager(private val db: LumenDatabase) {
 
     fun seedBuiltInPersonas() {
-        if (db.personaBox.all.isNotEmpty()) return
+        if (db.personaBox.all.any { it.isBuiltIn }) return
         val now = System.currentTimeMillis()
         db.personaBox.put(
             listOf(
