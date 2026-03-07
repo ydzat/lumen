@@ -34,7 +34,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -121,7 +120,7 @@ private fun SettingsMainScreen(
     var theme by remember { mutableStateOf(config.preferences.theme) }
     var language by remember { mutableStateOf(config.preferences.language) }
     var memoryAutoRecall by remember { mutableStateOf(config.preferences.memoryAutoRecall) }
-    var memoryInterval by remember { mutableFloatStateOf(config.preferences.memoryExtractionInterval.toFloat()) }
+    var memoryInterval by remember { mutableStateOf(config.preferences.memoryExtractionInterval.toFloat()) }
     var themeExpanded by remember { mutableStateOf(false) }
     var languageExpanded by remember { mutableStateOf(false) }
 

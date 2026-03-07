@@ -16,9 +16,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.lumen.core.config.ConfigStore
 import com.lumen.ui.navigation.Tab
 import com.lumen.ui.navigation.TabContent
-import com.lumen.core.config.ConfigStore
 import com.lumen.ui.theme.LumenTheme
 import com.lumen.ui.theme.ThemeState
 import org.koin.android.ext.android.inject
