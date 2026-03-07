@@ -1,5 +1,6 @@
 package com.lumen.core.database
 
+import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.entities.MemoryEntry
 import com.lumen.core.database.entities.MyObjectBox
 import com.lumen.core.database.entities.Source
@@ -81,7 +82,7 @@ class LumenDatabaseTest {
 
     @Test
     fun putMemoryEntryWithEmbedding() {
-        val embedding = FloatArray(1536) { it.toFloat() / 1536f }
+        val embedding = FloatArray(EMBEDDING_DIMENSIONS) { it.toFloat() / EMBEDDING_DIMENSIONS.toFloat() }
         val entry = MemoryEntry(
             content = "Test memory",
             category = "conversation",
@@ -96,7 +97,7 @@ class LumenDatabaseTest {
         assertEquals("Test memory", retrieved.content)
         assertEquals("conversation", retrieved.category)
         assertEquals(0.8f, retrieved.importance)
-        assertEquals(1536, retrieved.embedding.size)
+        assertEquals(EMBEDDING_DIMENSIONS, retrieved.embedding.size)
         assertTrue(retrieved.embedding.contentEquals(embedding))
     }
 }

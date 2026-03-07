@@ -93,6 +93,9 @@ docs/
 CLAUDE.md
 .claude/
 
+# ONNX model files (downloaded via scripts/download-model.sh)
+*.onnx
+
 # Misc
 *.bak
 *.tmp

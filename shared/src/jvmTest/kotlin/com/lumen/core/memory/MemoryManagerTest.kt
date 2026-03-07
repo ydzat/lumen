@@ -1,6 +1,7 @@
 package com.lumen.core.memory
 
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.entities.MyObjectBox
 import java.io.File
 import kotlin.test.AfterTest
@@ -23,7 +24,7 @@ class MemoryManagerTest {
         override suspend fun embed(text: String): FloatArray {
             // Deterministic fake embedding based on text hash
             val seed = text.hashCode()
-            return FloatArray(1536) { i ->
+            return FloatArray(EMBEDDING_DIMENSIONS) { i ->
                 ((seed + i) % 100) / 100f
             }
         }
@@ -61,7 +62,7 @@ class MemoryManagerTest {
         assertEquals("User likes coffee", entry.content)
         assertEquals("preference", entry.category)
         assertEquals("conversation", entry.source)
-        assertEquals(1536, entry.embedding.size)
+        assertEquals(EMBEDDING_DIMENSIONS, entry.embedding.size)
 
         val retrieved = db.memoryEntryBox.get(entry.id)
         assertNotNull(retrieved)

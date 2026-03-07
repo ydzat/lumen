@@ -1,6 +1,7 @@
 package com.lumen.core.memory
 
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import com.lumen.core.database.entities.MyObjectBox
 import java.io.File
 import kotlin.test.AfterTest
@@ -151,7 +152,7 @@ class SemanticCompressorTest {
             }
             val fakeEmbedding = object : EmbeddingClient {
                 override suspend fun embed(text: String): FloatArray =
-                    FloatArray(1536) { (text.hashCode() + it) % 100 / 100f }
+                    FloatArray(EMBEDDING_DIMENSIONS) { (text.hashCode() + it) % 100 / 100f }
                 override suspend fun embedBatch(texts: List<String>): List<FloatArray> =
                     texts.map { embed(it) }
             }

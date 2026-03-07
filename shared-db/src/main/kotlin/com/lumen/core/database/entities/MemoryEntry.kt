@@ -13,7 +13,7 @@ data class MemoryEntry(
     var createdAt: Long = 0,
     var updatedAt: Long = 0,
     var originalTimestamp: String = "",
-    @HnswIndex(dimensions = 1536)
+    @HnswIndex(dimensions = HNSW_DIMENSIONS)
     var embedding: FloatArray = floatArrayOf(),
     var keywords: String = "",
     var importance: Float = 0f,
