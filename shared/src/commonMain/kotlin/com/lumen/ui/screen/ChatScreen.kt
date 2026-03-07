@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -542,6 +543,10 @@ private fun ConversationChatScreen(
         }
     }
 
+    fun findUploadStatusIndex(filename: String): Int = uiItems.indexOfLast {
+        it is ChatUiItem.StatusInfo && (it as ChatUiItem.StatusInfo).text.startsWith("Uploading $filename")
+    }
+
     fun attachFile() {
         if (isIngesting || isLoading || documentManager == null) return
         scope.launch {
@@ -552,17 +557,13 @@ private fun ConversationChatScreen(
                 val document = withContext(Dispatchers.Default) {
                     documentManager.ingest(file.bytes, file.name, file.mimeType, projectId)
                 }
-                val statusIdx = uiItems.indexOfLast {
-                    it is ChatUiItem.StatusInfo && (it as ChatUiItem.StatusInfo).text.startsWith("Uploading ${file.name}")
-                }
+                val statusIdx = findUploadStatusIndex(file.name)
                 if (statusIdx >= 0) {
                     uiItems[statusIdx] = ChatUiItem.StatusInfo("Uploaded ${file.name} (${document.chunkCount} chunks)")
                 }
                 snackbarHostState.showSnackbar("Document uploaded: ${file.name}")
             } catch (e: Exception) {
-                val statusIdx = uiItems.indexOfLast {
-                    it is ChatUiItem.StatusInfo && (it as ChatUiItem.StatusInfo).text.startsWith("Uploading ${file.name}")
-                }
+                val statusIdx = findUploadStatusIndex(file.name)
                 if (statusIdx >= 0) {
                     uiItems[statusIdx] = ChatUiItem.StatusInfo("Failed to upload ${file.name}")
                 }
@@ -966,7 +967,7 @@ private fun DocumentListDialog(
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.height(300.dp),
+                    modifier = Modifier.heightIn(max = 300.dp),
                 ) {
                     items(documents, key = { it.id }) { document ->
                         Row(
