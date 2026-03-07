@@ -7,6 +7,7 @@ import com.lumen.core.database.entities.MemoryEntry_
 class MemoryManager(
     private val database: LumenDatabase,
     private val embeddingClient: EmbeddingClient,
+    private val compressor: SemanticCompressor,
 ) {
 
     suspend fun store(content: String, category: String, source: String): MemoryEntry {
@@ -42,6 +43,27 @@ class MemoryManager(
         }
 
         return results
+    }
+
+    suspend fun storeFromConversation(conversation: String): List<MemoryEntry> {
+        val extracted = compressor.compress(conversation, System.currentTimeMillis())
+        return extracted.map { memory ->
+            val embedding = embeddingClient.embed(memory.content)
+            val now = System.currentTimeMillis()
+            val entry = MemoryEntry(
+                content = memory.content,
+                category = memory.category,
+                source = "conversation",
+                embedding = embedding,
+                keywords = memory.keywords.joinToString(","),
+                importance = memory.importance,
+                originalTimestamp = memory.originalTimestamp,
+                createdAt = now,
+                updatedAt = now,
+            )
+            database.memoryEntryBox.put(entry)
+            entry
+        }
     }
 
     fun getById(id: Long): MemoryEntry? {
