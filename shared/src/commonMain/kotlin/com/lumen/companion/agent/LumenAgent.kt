@@ -274,7 +274,7 @@ class LumenAgent(
         }
     }
 
-    suspend fun generateTitle(userMessage: String): String? {
+    internal suspend fun generateTitle(userMessage: String): String? {
         if (config.apiKey.isBlank()) return null
         return try {
             val prompt = Prompt(

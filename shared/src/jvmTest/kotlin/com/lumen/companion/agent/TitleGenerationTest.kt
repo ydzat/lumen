@@ -3,6 +3,7 @@ package com.lumen.companion.agent
 import com.lumen.core.config.LlmConfig
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class TitleGenerationTest {
@@ -22,6 +23,6 @@ class TitleGenerationTest {
 
     @Test
     fun defaultTitle_constant_matchesExpected() {
-        assert(LumenAgent.DEFAULT_TITLE == "New conversation")
+        assertEquals("New conversation", LumenAgent.DEFAULT_TITLE)
     }
 }
