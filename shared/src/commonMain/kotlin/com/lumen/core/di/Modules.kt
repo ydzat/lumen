@@ -1,7 +1,9 @@
 package com.lumen.core.di
 
+import com.lumen.companion.agent.ContextWindowBuilder
 import com.lumen.companion.agent.LlmClientFactory
 import com.lumen.companion.agent.LumenAgent
+import com.lumen.companion.conversation.ConversationManager
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.memory.EmbeddingClient
@@ -25,12 +27,16 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 val companionModule = module {
+    single { ConversationManager(get()) }
+    single { ContextWindowBuilder(getOrNull()) }
     factory {
         val config = get<ConfigStore>().load().llm
         val memoryManager = getOrNull<MemoryManager>()
         val db = getOrNull<LumenDatabase>()
         val embeddingClient = getOrNull<EmbeddingClient>()
-        LumenAgent(config, memoryManager, db, embeddingClient)
+        val conversationManager = getOrNull<ConversationManager>()
+        val contextWindowBuilder = getOrNull<ContextWindowBuilder>()
+        LumenAgent(config, memoryManager, db, embeddingClient, conversationManager, contextWindowBuilder)
     }
 }
 

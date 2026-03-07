@@ -11,18 +11,23 @@ import com.lumen.companion.agent.tools.GetTrendsTool
 import com.lumen.companion.agent.tools.RecallMemoryTool
 import com.lumen.companion.agent.tools.SearchArticlesTool
 import com.lumen.companion.agent.tools.StoreMemoryTool
+import com.lumen.companion.conversation.ConversationManager
 import com.lumen.core.config.LlmConfig
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.MemoryManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 class LumenAgent(
     private val config: LlmConfig,
     private val memoryManager: MemoryManager? = null,
     private val db: LumenDatabase? = null,
     private val embeddingClient: EmbeddingClient? = null,
+    private val conversationManager: ConversationManager? = null,
+    private val contextWindowBuilder: ContextWindowBuilder? = null,
 ) {
 
     private val httpClient = HttpClient {
@@ -91,6 +96,90 @@ class LumenAgent(
         }
     }
 
+    fun chatStream(conversationId: Long, userMessage: String): Flow<ChatEvent> = flow {
+        val cm = conversationManager
+            ?: throw IllegalStateException("ConversationManager is required for chatStream")
+        val cwb = contextWindowBuilder ?: ContextWindowBuilder()
+
+        if (config.apiKey.isBlank()) {
+            emit(ChatEvent.Error("API key is not configured"))
+            emit(ChatEvent.Done)
+            return@flow
+        }
+
+        try {
+            val userMsg = cm.addMessage(conversationId, "user", userMessage)
+            emit(ChatEvent.UserMessageSaved(userMsg.id))
+
+            val allMessages = cm.getMessages(conversationId)
+            val contextMessages = cwb.buildContext(allMessages, systemPrompt)
+
+            val conversationMessages = contextMessages.toMutableList<Message>()
+            var iterations = 0
+
+            while (iterations < MAX_TOOL_ITERATIONS) {
+                val prompt = Prompt(conversationMessages, "lumen-chat", LLMParams())
+                val toolDescriptors = tools.map { it.descriptor }
+                val responses = llmClient.execute(prompt, model, toolDescriptors)
+
+                val toolCall = responses.firstOrNull { it is Message.Tool.Call } as? Message.Tool.Call
+                if (toolCall == null) {
+                    val responseText = responses.firstOrNull()?.content ?: ""
+                    cm.addMessage(conversationId, "assistant", responseText)
+                    emit(ChatEvent.AssistantResponse(responseText))
+                    maybeExtractMemories(conversationId, cm)?.let { count ->
+                        emit(ChatEvent.MemoryExtracted(count))
+                    }
+                    break
+                }
+
+                emit(ChatEvent.ToolCallStart(toolCall.tool, toolCall.content))
+                val toolResult = executeToolCall(toolCall)
+                emit(ChatEvent.ToolCallResult(toolCall.tool, toolResult.content))
+
+                cm.addMessage(conversationId, "tool_call", "", toolCall.tool, toolCall.content)
+                cm.addMessage(conversationId, "tool_result", toolResult.content, toolCall.tool)
+
+                conversationMessages.add(toolCall)
+                conversationMessages.add(toolResult)
+                iterations++
+            }
+
+            if (iterations >= MAX_TOOL_ITERATIONS) {
+                val errorMsg = "Maximum tool iterations ($MAX_TOOL_ITERATIONS) exceeded"
+                cm.addMessage(conversationId, "assistant", errorMsg)
+                emit(ChatEvent.Error(errorMsg))
+            }
+        } catch (e: Exception) {
+            emit(ChatEvent.Error(classifyError(e)))
+        }
+
+        emit(ChatEvent.Done)
+    }
+
+    private suspend fun maybeExtractMemories(
+        conversationId: Long,
+        cm: ConversationManager,
+    ): Int? {
+        val mm = memoryManager ?: return null
+        val conversation = cm.getConversation(conversationId) ?: return null
+        if (conversation.messageCount % MEMORY_EXTRACTION_INTERVAL != 0) return null
+
+        val messages = cm.getMessages(conversationId)
+        val recentMessages = messages.takeLast(MEMORY_EXTRACTION_INTERVAL * 2)
+        val conversationText = recentMessages
+            .filter { it.role == "user" || it.role == "assistant" }
+            .joinToString("\n") { "${it.role}: ${it.content}" }
+        if (conversationText.isBlank()) return null
+
+        return try {
+            val extracted = mm.storeFromConversation(conversationText)
+            extracted.size.takeIf { it > 0 }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private suspend fun executeToolCall(call: Message.Tool.Call): Message.Tool.Result {
         val tool = tools.find { it.name == call.tool }
         val result = if (tool != null) {
@@ -136,6 +225,7 @@ Use these tools when contextually appropriate."""
 
     private companion object {
         private const val MAX_TOOL_ITERATIONS = 5
+        private const val MEMORY_EXTRACTION_INTERVAL = 10
         private const val CONNECT_TIMEOUT_MS = 30_000L
         private const val REQUEST_TIMEOUT_MS = 120_000L
     }
