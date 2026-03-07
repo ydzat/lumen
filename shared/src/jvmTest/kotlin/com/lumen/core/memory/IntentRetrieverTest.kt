@@ -50,16 +50,15 @@ class IntentRetrieverTest {
             "User studies at the university library",
         )
         for (content in entries) {
-            runBlocking {
-                val embedding = fakeEmbeddingClient.embed(content)
-                val entry = MemoryEntry(
-                    content = content,
-                    embedding = embedding,
-                    createdAt = System.currentTimeMillis(),
-                    updatedAt = System.currentTimeMillis(),
-                )
-                db.memoryEntryBox.put(entry)
-            }
+            val seed = content.hashCode()
+            val embedding = FloatArray(1536) { i -> ((seed + i) % 100) / 100f }
+            val entry = MemoryEntry(
+                content = content,
+                embedding = embedding,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
+            )
+            db.memoryEntryBox.put(entry)
         }
     }
 

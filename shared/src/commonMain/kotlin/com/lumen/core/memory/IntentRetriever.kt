@@ -25,6 +25,10 @@ class IntentRetriever(
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    private companion object {
+        private val WHITESPACE = "\\s+".toRegex()
+    }
+
     suspend fun retrieve(query: String, limit: Int): List<MemoryEntry> {
         val subQueries = decompose(query)
         val allResults = searchParallel(subQueries, limit)
@@ -32,7 +36,7 @@ class IntentRetriever(
     }
 
     internal suspend fun decompose(query: String): List<String> {
-        val wordCount = query.trim().split("\\s+".toRegex()).size
+        val wordCount = query.trim().split(WHITESPACE).size
         if (wordCount <= shortQueryThreshold) {
             return listOf(query)
         }

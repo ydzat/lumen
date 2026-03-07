@@ -4,12 +4,12 @@ import com.lumen.companion.agent.LlmClientFactory
 import com.lumen.companion.agent.LumenAgent
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.memory.EmbeddingClient
+import com.lumen.core.memory.IntentRetriever
 import com.lumen.core.memory.KoogLlmCall
 import com.lumen.core.memory.LlmCall
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.RemoteEmbeddingClient
 import com.lumen.core.memory.SemanticCompressor
-import com.lumen.core.memory.IntentRetriever
 import com.lumen.core.memory.SemanticSynthesizer
 import io.ktor.client.HttpClient
 import org.koin.core.module.Module
