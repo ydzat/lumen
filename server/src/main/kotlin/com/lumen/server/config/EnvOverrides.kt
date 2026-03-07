@@ -21,7 +21,9 @@ object EnvOverrides {
 
     fun corsOrigins(): List<String>? {
         val raw = env("LUMEN_CORS_ORIGINS") ?: return null
-        return raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        return raw.split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && it != "*" }
     }
 
     private fun env(name: String): String? =

@@ -558,6 +558,26 @@ class ResearchRoutesTest {
     }
 
     @Test
+    fun getTrends_nonIntegerDays_returns400() = testApplication {
+        application {
+            configureSerialization()
+            configureErrorHandling()
+            configureAuth(testToken)
+            install(Koin) { modules(testKoinModule()) }
+            routing {
+                authenticate(AUTH_BEARER) {
+                    route("/api") { digestRoutes() }
+                }
+            }
+        }
+
+        val response = client.get("/api/digest/trends?days=abc") {
+            bearerAuth(testToken)
+        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
     fun getTrends_defaultDays_returns7() = testApplication {
         application {
             configureSerialization()

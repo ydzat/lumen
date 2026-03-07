@@ -36,7 +36,13 @@ fun Route.digestRoutes() {
 
         get("/trends") {
             val db = call.application.koinGet<LumenDatabase>()
-            val days = call.request.queryParameters["days"]?.toIntOrNull() ?: DEFAULT_TRENDS_DAYS
+            val daysParam = call.request.queryParameters["days"]
+            val days = if (daysParam == null) {
+                DEFAULT_TRENDS_DAYS
+            } else {
+                daysParam.toIntOrNull()
+                    ?: throw IllegalArgumentException("Invalid days parameter: $daysParam (expected integer)")
+            }
             if (days < 1 || days > MAX_TRENDS_DAYS) {
                 throw IllegalArgumentException("days must be between 1 and $MAX_TRENDS_DAYS")
             }
