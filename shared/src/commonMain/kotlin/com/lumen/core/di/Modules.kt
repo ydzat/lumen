@@ -12,6 +12,8 @@ import com.lumen.core.memory.SemanticSynthesizer
 import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
+import com.lumen.research.digest.DigestFormatter
+import com.lumen.research.digest.DigestGenerator
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.collector.SourceManager
 import io.ktor.client.HttpClient
@@ -46,6 +48,8 @@ val researchModule = module {
     single { ProjectManager(get(), get()) }
     single { ArticleAnalyzer(get(), get(), get()) }
     single { RelevanceScorer(get(), getOrNull()) }
+    single { DigestGenerator(get(), get(), getOrNull()) }
+    single { DigestFormatter() }
 }
 
 expect val platformModule: Module
