@@ -9,6 +9,7 @@ import com.lumen.core.memory.LlmCall
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.SemanticCompressor
 import com.lumen.core.memory.SemanticSynthesizer
+import com.lumen.research.collector.RssCollector
 import io.ktor.client.HttpClient
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -36,7 +37,7 @@ val memoryModule = module {
 }
 
 val researchModule = module {
-    // placeholder for future research services
+    single { RssCollector(get()) }
 }
 
 expect val platformModule: Module
