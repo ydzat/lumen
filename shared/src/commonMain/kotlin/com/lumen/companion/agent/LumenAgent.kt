@@ -10,6 +10,7 @@ import com.lumen.companion.agent.tools.GetDigestTool
 import com.lumen.companion.agent.tools.GetTrendsTool
 import com.lumen.companion.agent.tools.RecallMemoryTool
 import com.lumen.companion.agent.tools.SearchArticlesTool
+import com.lumen.companion.agent.tools.SearchDocumentsTool
 import com.lumen.companion.agent.tools.StoreMemoryTool
 import com.lumen.companion.conversation.ConversationManager
 import com.lumen.core.config.LlmConfig
@@ -54,6 +55,7 @@ class LumenAgent(
         }
         if (db != null && embeddingClient != null) {
             add(SearchArticlesTool(db, embeddingClient))
+            add(SearchDocumentsTool(db, embeddingClient))
         }
         if (db != null) {
             add(GetDigestTool(db))
