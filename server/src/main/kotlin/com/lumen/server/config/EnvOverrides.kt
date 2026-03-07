@@ -24,6 +24,7 @@ object EnvOverrides {
         return raw.split(",")
             .map { it.trim() }
             .filter { it.isNotEmpty() && it != "*" }
+            .ifEmpty { null }
     }
 
     private fun env(name: String): String? =
