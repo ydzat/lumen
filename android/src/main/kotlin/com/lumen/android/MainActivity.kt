@@ -18,11 +18,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.lumen.ui.navigation.Tab
 import com.lumen.ui.navigation.TabContent
+import com.lumen.core.config.ConfigStore
 import com.lumen.ui.theme.LumenTheme
+import com.lumen.ui.theme.ThemeState
+import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
+    private val configStore: ConfigStore by inject()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ThemeState.mode = configStore.load().preferences.theme
         setContent {
             LumenTheme {
                 var selectedTab by remember { mutableStateOf(Tab.Home) }

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.lumen.companion.persona.PersonaManager
+import com.lumen.core.config.ConfigStore
 import com.lumen.core.di.companionModule
 import com.lumen.core.di.documentModule
 import com.lumen.core.di.memoryModule
@@ -23,6 +24,7 @@ import com.lumen.core.di.researchModule
 import com.lumen.ui.navigation.Tab
 import com.lumen.ui.navigation.TabContent
 import com.lumen.ui.theme.LumenTheme
+import com.lumen.ui.theme.ThemeState
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
@@ -30,7 +32,9 @@ fun main() {
     startKoin {
         modules(platformModule, companionModule, memoryModule, researchModule, documentModule)
     }
-    GlobalContext.get().get<PersonaManager>().seedBuiltInPersonas()
+    val koin = GlobalContext.get()
+    koin.get<PersonaManager>().seedBuiltInPersonas()
+    ThemeState.mode = koin.get<ConfigStore>().load().preferences.theme
     application {
         Window(
             onCloseRequest = ::exitApplication,
