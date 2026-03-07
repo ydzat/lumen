@@ -16,22 +16,24 @@ data class SearchDocumentsArgs(
 class SearchDocumentsTool(
     private val db: LumenDatabase,
     private val embeddingClient: EmbeddingClient,
+    private val defaultProjectId: Long = 0,
 ) : SimpleTool<SearchDocumentsArgs>(
     SearchDocumentsArgs.serializer(),
     "search_documents",
     "Search uploaded documents by semantic similarity to a query. Optionally scope to a project.",
 ) {
     override suspend fun execute(args: SearchDocumentsArgs): String {
+        val effectiveProjectId = args.projectId.takeIf { it > 0 } ?: defaultProjectId
         val embedding = embeddingClient.embed(args.query)
 
-        val searchLimit = if (args.projectId > 0) args.limit * OVER_FETCH_FACTOR else args.limit
+        val searchLimit = if (effectiveProjectId > 0) args.limit * OVER_FETCH_FACTOR else args.limit
         val allChunks = db.documentChunkBox.query()
             .nearestNeighbors(DocumentChunk_.embedding, embedding, searchLimit)
             .build()
             .use { it.find() }
 
-        val chunks = if (args.projectId > 0) {
-            allChunks.filter { it.projectId == args.projectId }.take(args.limit)
+        val chunks = if (effectiveProjectId > 0) {
+            allChunks.filter { it.projectId == effectiveProjectId }.take(args.limit)
         } else {
             allChunks
         }

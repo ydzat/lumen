@@ -7,6 +7,7 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.params.LLMParams
 import com.lumen.companion.agent.tools.GetDigestTool
+import com.lumen.companion.agent.tools.GetProjectInfoTool
 import com.lumen.companion.agent.tools.GetTrendsTool
 import com.lumen.companion.agent.tools.RecallMemoryTool
 import com.lumen.companion.agent.tools.SearchArticlesTool
@@ -15,8 +16,9 @@ import com.lumen.companion.agent.tools.StoreMemoryTool
 import com.lumen.companion.conversation.ConversationManager
 import com.lumen.core.config.LlmConfig
 import com.lumen.core.config.UserPreferences
-import com.lumen.core.database.entities.Persona
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.database.entities.Persona
+import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.MemoryManager
 import io.ktor.client.HttpClient
@@ -33,6 +35,7 @@ class LumenAgent(
     private val contextWindowBuilder: ContextWindowBuilder? = null,
     private val persona: Persona? = null,
     private val userPreferences: UserPreferences = UserPreferences(),
+    private val projectId: Long = 0,
 ) {
 
     private val httpClient = HttpClient {
@@ -44,9 +47,16 @@ class LumenAgent(
     }
     private val llmClient: LLMClient = LlmClientFactory.createClient(config, httpClient)
     private val model = LlmClientFactory.resolveModel(config)
+    private val projectContext: ResearchProject? = loadProjectContext()
 
     internal val tools: List<Tool<*, *>> = buildTools()
     internal val systemPrompt: String = buildSystemPrompt()
+
+    private fun loadProjectContext(): ResearchProject? {
+        if (projectId <= 0 || db == null) return null
+        val project = db.researchProjectBox.get(projectId)
+        return if (project == null || project.id == 0L) null else project
+    }
 
     private fun buildTools(): List<Tool<*, *>> = buildList {
         if (memoryManager != null) {
@@ -54,12 +64,15 @@ class LumenAgent(
             add(StoreMemoryTool(memoryManager))
         }
         if (db != null && embeddingClient != null) {
-            add(SearchArticlesTool(db, embeddingClient))
-            add(SearchDocumentsTool(db, embeddingClient))
+            add(SearchArticlesTool(db, embeddingClient, defaultProjectId = projectId))
+            add(SearchDocumentsTool(db, embeddingClient, defaultProjectId = projectId))
         }
         if (db != null) {
             add(GetDigestTool(db))
             add(GetTrendsTool(db))
+            if (projectContext != null) {
+                add(GetProjectInfoTool(db))
+            }
         }
     }
 
@@ -255,14 +268,27 @@ class LumenAgent(
     }
 
     private fun assembleSystemPrompt(basePrompt: String): String {
-        if (tools.isEmpty()) return basePrompt
+        val sections = buildString {
+            append(basePrompt)
 
-        val toolDescriptions = tools.joinToString("\n") { "- ${it.name}: ${it.descriptor.description}" }
-        return """$basePrompt
+            if (projectContext != null) {
+                append("\n\nCurrent Research Project: ${projectContext.name}")
+                if (projectContext.description.isNotBlank()) {
+                    append("\nDescription: ${projectContext.description}")
+                }
+                if (projectContext.keywords.isNotBlank()) {
+                    append("\nKeywords: ${projectContext.keywords}")
+                }
+            }
 
-Available tools:
-$toolDescriptions
-Use these tools when contextually appropriate."""
+            if (tools.isNotEmpty()) {
+                val toolDescriptions = tools.joinToString("\n") { "- ${it.name}: ${it.descriptor.description}" }
+                append("\n\nAvailable tools:\n")
+                append(toolDescriptions)
+                append("\nUse these tools when contextually appropriate.")
+            }
+        }
+        return sections
     }
 
     companion object {

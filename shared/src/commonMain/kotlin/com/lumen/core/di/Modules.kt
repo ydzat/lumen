@@ -35,7 +35,7 @@ val companionModule = module {
     single { ConversationManager(get()) }
     single { ContextWindowBuilder(getOrNull()) }
     single { PersonaManager(get()) }
-    factory {
+    factory { (projectId: Long) ->
         val appConfig = get<ConfigStore>().load()
         val memoryManager = getOrNull<MemoryManager>()
         val db = getOrNull<LumenDatabase>()
@@ -43,7 +43,7 @@ val companionModule = module {
         val conversationManager = getOrNull<ConversationManager>()
         val contextWindowBuilder = getOrNull<ContextWindowBuilder>()
         val persona = getOrNull<PersonaManager>()?.getActive()
-        LumenAgent(appConfig.llm, memoryManager, db, embeddingClient, conversationManager, contextWindowBuilder, persona, appConfig.preferences)
+        LumenAgent(appConfig.llm, memoryManager, db, embeddingClient, conversationManager, contextWindowBuilder, persona, appConfig.preferences, projectId)
     }
 }
 

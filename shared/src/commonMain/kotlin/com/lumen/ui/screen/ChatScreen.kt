@@ -79,6 +79,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.getKoin
 import org.koin.compose.koinInject
+import org.koin.core.parameter.parametersOf
 
 private enum class ChatSubScreen {
     List,
@@ -404,7 +405,8 @@ private fun ConversationChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
-    var conversation by remember { mutableStateOf<Conversation?>(null) }
+    val initialConversation = remember { conversationManager.getConversation(conversationId) }
+    var conversation by remember { mutableStateOf(initialConversation) }
     val uiItems = remember { mutableStateListOf<ChatUiItem>() }
     var inputText by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -412,7 +414,9 @@ private fun ConversationChatScreen(
     var typewriterCounter by remember { mutableStateOf(0) }
     var typewriterDisplay by remember { mutableStateOf("") }
     var typewriterDone by remember { mutableStateOf(true) }
-    val agent = remember { agentFactory.get<LumenAgent>() }
+    val agent = remember {
+        agentFactory.get<LumenAgent> { parametersOf(initialConversation?.projectId ?: 0L) }
+    }
     DisposableEffect(Unit) { onDispose { agent.close() } }
 
     fun loadMessages() {
