@@ -17,6 +17,7 @@ actual class PlatformScheduler(private val collectorManager: CollectorManager) {
         val newScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
         scope = newScope
         newScope.launch {
+            delay(intervalMillis)
             while (isActive) {
                 try {
                     collectorManager.runPipeline()

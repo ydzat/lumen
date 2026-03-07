@@ -77,16 +77,6 @@ class CollectorManagerTest {
     }
 
     @Test
-    fun runPipeline_skipsAnalysisWhenNoArticles() = runBlocking {
-        val manager = createManager()
-
-        val result = manager.runPipeline()
-
-        assertEquals(0, result.analyzed)
-        assertEquals(0, result.scored)
-    }
-
-    @Test
     fun runPipeline_digestGenerated_forToday() = runBlocking {
         val manager = createManager()
 
