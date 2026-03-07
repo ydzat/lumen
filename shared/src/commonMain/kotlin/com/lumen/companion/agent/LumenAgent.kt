@@ -13,6 +13,7 @@ import com.lumen.companion.agent.tools.SearchArticlesTool
 import com.lumen.companion.agent.tools.StoreMemoryTool
 import com.lumen.companion.conversation.ConversationManager
 import com.lumen.core.config.LlmConfig
+import com.lumen.core.database.entities.Persona
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.MemoryManager
@@ -28,6 +29,7 @@ class LumenAgent(
     private val embeddingClient: EmbeddingClient? = null,
     private val conversationManager: ConversationManager? = null,
     private val contextWindowBuilder: ContextWindowBuilder? = null,
+    private val persona: Persona? = null,
 ) {
 
     private val httpClient = HttpClient {
@@ -63,9 +65,7 @@ class LumenAgent(
         }
 
         val messages = buildList {
-            if (tools.isNotEmpty()) {
-                add(Message.System(systemPrompt, RequestMetaInfo.Empty))
-            }
+            add(Message.System(systemPrompt, RequestMetaInfo.Empty))
             add(Message.User(message, RequestMetaInfo.Empty))
         }
 
@@ -218,14 +218,21 @@ class LumenAgent(
     }
 
     private fun buildSystemPrompt(): String {
+        val personaPrompt = persona?.systemPrompt
+            ?: DEFAULT_SYSTEM_PROMPT
+
+        if (tools.isEmpty()) return personaPrompt
+
         val toolDescriptions = tools.joinToString("\n") { "- ${it.name}: ${it.descriptor.description}" }
-        return """You are Lumen, a personal AI assistant.
-You have access to the following tools:
+        return """$personaPrompt
+
+Available tools:
 $toolDescriptions
 Use these tools when contextually appropriate."""
     }
 
-    private companion object {
+    companion object {
+        internal const val DEFAULT_SYSTEM_PROMPT = "You are Lumen, a personal AI assistant."
         private const val MAX_TOOL_ITERATIONS = 5
         private const val MEMORY_EXTRACTION_INTERVAL = 10
         private const val CONNECT_TIMEOUT_MS = 30_000L
