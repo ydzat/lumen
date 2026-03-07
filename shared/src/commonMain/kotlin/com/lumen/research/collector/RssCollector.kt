@@ -4,6 +4,7 @@ import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.Article_
 import com.lumen.core.database.entities.Source
+import com.lumen.core.database.entities.Source_
 import com.prof18.rssparser.RssParser
 import com.prof18.rssparser.model.RssChannel
 import java.time.Instant
@@ -24,7 +25,10 @@ class RssCollector(
     }
 
     suspend fun fetchAll(): List<Article> {
-        val enabledSources = db.sourceBox.all.filter { it.enabled }
+        val enabledSources = db.sourceBox.query()
+            .equal(Source_.enabled, true)
+            .build()
+            .use { it.find() }
         return enabledSources.flatMap { source ->
             try {
                 fetchSource(source)
@@ -70,11 +74,10 @@ class RssCollector(
     }
 
     private fun queryExistingUrls(sourceId: Long): Set<String> {
-        val query = db.articleBox.query()
+        val articles = db.articleBox.query()
             .equal(Article_.sourceId, sourceId)
             .build()
-        val articles = query.find()
-        query.close()
+            .use { it.find() }
         return articles.mapTo(mutableSetOf()) { it.url }
     }
 

@@ -16,6 +16,7 @@ import com.lumen.core.database.LumenDatabase
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.MemoryManager
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 
 class LumenAgent(
     private val config: LlmConfig,
@@ -24,7 +25,13 @@ class LumenAgent(
     private val embeddingClient: EmbeddingClient? = null,
 ) {
 
-    private val httpClient = HttpClient()
+    private val httpClient = HttpClient {
+        install(HttpTimeout) {
+            connectTimeoutMillis = CONNECT_TIMEOUT_MS
+            requestTimeoutMillis = REQUEST_TIMEOUT_MS
+            socketTimeoutMillis = REQUEST_TIMEOUT_MS
+        }
+    }
     private val llmClient: LLMClient = LlmClientFactory.createClient(config, httpClient)
     private val model = LlmClientFactory.resolveModel(config)
 
@@ -129,5 +136,7 @@ Use these tools when contextually appropriate."""
 
     private companion object {
         private const val MAX_TOOL_ITERATIONS = 5
+        private const val CONNECT_TIMEOUT_MS = 30_000L
+        private const val REQUEST_TIMEOUT_MS = 120_000L
     }
 }

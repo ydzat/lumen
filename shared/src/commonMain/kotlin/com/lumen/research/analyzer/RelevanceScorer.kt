@@ -3,6 +3,7 @@ package com.lumen.research.analyzer
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.ResearchProject
+import com.lumen.core.database.entities.ResearchProject_
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.cosineSimilarity
 import com.lumen.research.parseCsvSet
@@ -15,7 +16,10 @@ class RelevanceScorer(
     suspend fun score(article: Article): Float {
         if (article.embedding.isEmpty()) return 0f
 
-        val activeProject = db.researchProjectBox.all.firstOrNull { it.isActive }
+        val activeProject = db.researchProjectBox.query()
+            .equal(ResearchProject_.isActive, true)
+            .build()
+            .use { it.findFirst() }
         val hasProject = activeProject != null && activeProject.embedding.isNotEmpty()
         val hasMemory = memoryManager != null
 
@@ -43,8 +47,8 @@ class RelevanceScorer(
     suspend fun scoreAndPersist(article: Article): Article {
         val relevanceScore = score(article)
         val updated = article.copy(aiRelevanceScore = relevanceScore)
-        db.articleBox.put(updated)
-        return db.articleBox.get(article.id)
+        val id = db.articleBox.put(updated)
+        return db.articleBox.get(id)
     }
 
     suspend fun scoreBatch(articles: List<Article>): List<Article> {

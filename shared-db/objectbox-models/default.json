@@ -198,7 +198,9 @@
         {
           "id": "9:6675773818185487617",
           "name": "fetchedAt",
-          "type": 6
+          "indexId": "9:233493341227495940",
+          "type": 6,
+          "flags": 8
         },
         {
           "id": "10:9140870730389160215",
@@ -281,7 +283,9 @@
         {
           "id": "7:5283064180091067881",
           "name": "createdAt",
-          "type": 6
+          "indexId": "10:7485888030327260848",
+          "type": 6,
+          "flags": 8
         }
       ],
       "relations": []
@@ -341,7 +345,7 @@
     }
   ],
   "lastEntityId": "5:6135864324703906304",
-  "lastIndexId": "8:4748608305065077273",
+  "lastIndexId": "10:7485888030327260848",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

@@ -15,7 +15,7 @@ data class Article(
     var content: String = "",
     var author: String = "",
     var publishedAt: Long = 0,
-    var fetchedAt: Long = 0,
+    @Index var fetchedAt: Long = 0,
     var readAt: Long = 0,
     var starred: Boolean = false,
     @HnswIndex(dimensions = HNSW_DIMENSIONS)
