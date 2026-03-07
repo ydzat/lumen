@@ -6,6 +6,7 @@ import com.lumen.core.database.LumenDatabase
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.koin.core.parameter.parametersOf
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -39,7 +40,7 @@ class ModulesTest {
 
     @Test
     fun companionModule_providesLumenAgent() {
-        val agent = GlobalContext.get().get<LumenAgent>()
+        val agent = GlobalContext.get().get<LumenAgent> { parametersOf(0L) }
         assertNotNull(agent)
         agent.close()
     }
