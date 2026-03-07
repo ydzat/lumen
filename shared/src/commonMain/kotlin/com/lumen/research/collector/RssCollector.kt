@@ -6,8 +6,9 @@ import com.lumen.core.database.entities.Article_
 import com.lumen.core.database.entities.Source
 import com.prof18.rssparser.RssParser
 import com.prof18.rssparser.model.RssChannel
-import java.text.SimpleDateFormat
 import java.time.Instant
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class RssCollector(
@@ -88,12 +89,12 @@ class RssCollector(
     companion object {
         const val DEFAULT_RSSHUB_BASE_URL = "https://rsshub.app"
 
-        private val RFC_822_FORMAT = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH)
+        private val RFC_822_FORMAT = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH)
 
         internal fun parseRssDate(dateStr: String?): Long {
             if (dateStr.isNullOrBlank()) return 0L
             return try {
-                RFC_822_FORMAT.parse(dateStr)?.time ?: 0L
+                ZonedDateTime.parse(dateStr, RFC_822_FORMAT).toInstant().toEpochMilli()
             } catch (_: Exception) {
                 try {
                     Instant.parse(dateStr).toEpochMilli()
