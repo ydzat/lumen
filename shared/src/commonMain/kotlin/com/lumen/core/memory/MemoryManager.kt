@@ -25,11 +25,12 @@ class MemoryManager(
     }
 
     suspend fun recall(query: String, limit: Int = 5): List<MemoryEntry> {
+        require(limit > 0) { "limit must be positive, got $limit" }
         val queryEmbedding = embeddingClient.embed(query)
         val results = database.memoryEntryBox.query()
             .nearestNeighbors(MemoryEntry_.embedding, queryEmbedding, limit)
             .build()
-            .find()
+            .use { it.find() }
 
         val now = System.currentTimeMillis()
         for (entry in results) {
