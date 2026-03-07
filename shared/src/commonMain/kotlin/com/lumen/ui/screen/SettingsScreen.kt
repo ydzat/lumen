@@ -18,17 +18,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -44,10 +47,23 @@ import com.lumen.companion.agent.ChatResult
 import com.lumen.companion.agent.LumenAgent
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.config.LlmConfig
+import com.lumen.core.config.UserPreferences
+import com.lumen.ui.theme.ThemeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+
+private val THEMES = listOf(
+    "system" to "System",
+    "light" to "Light",
+    "dark" to "Dark",
+)
+
+private val LANGUAGES = listOf(
+    "zh" to "中文",
+    "en" to "English",
+)
 
 private val PROVIDERS = listOf(
     "deepseek" to "DeepSeek",
@@ -100,6 +116,13 @@ private fun SettingsMainScreen(
     var apiKeyVisible by remember { mutableStateOf(false) }
     var isTesting by remember { mutableStateOf(false) }
     var providerExpanded by remember { mutableStateOf(false) }
+
+    var theme by remember { mutableStateOf(config.preferences.theme) }
+    var language by remember { mutableStateOf(config.preferences.language) }
+    var memoryAutoRecall by remember { mutableStateOf(config.preferences.memoryAutoRecall) }
+    var memoryInterval by remember { mutableStateOf(config.preferences.memoryExtractionInterval.toFloat()) }
+    var themeExpanded by remember { mutableStateOf(false) }
+    var languageExpanded by remember { mutableStateOf(false) }
 
     fun currentLlmConfig() = LlmConfig(
         provider = provider,
@@ -208,7 +231,15 @@ private fun SettingsMainScreen(
             ) {
                 Button(
                     onClick = {
-                        val updatedConfig = config.copy(llm = currentLlmConfig())
+                        val updatedConfig = config.copy(
+                            llm = currentLlmConfig(),
+                            preferences = UserPreferences(
+                                theme = theme,
+                                language = language,
+                                memoryAutoRecall = memoryAutoRecall,
+                                memoryExtractionInterval = memoryInterval.toInt(),
+                            ),
+                        )
                         configStore.save(updatedConfig)
                         scope.launch {
                             snackbarHostState.showSnackbar("Settings saved")
@@ -250,6 +281,100 @@ private fun SettingsMainScreen(
                     Text("Test Connection")
                 }
             }
+
+            Spacer(Modifier.height(32.dp))
+
+            Text("Preferences", style = MaterialTheme.typography.headlineSmall)
+
+            Spacer(Modifier.height(16.dp))
+
+            // Theme selector
+            ExposedDropdownMenuBox(
+                expanded = themeExpanded,
+                onExpandedChange = { themeExpanded = it },
+            ) {
+                OutlinedTextField(
+                    value = THEMES.firstOrNull { it.first == theme }?.second ?: theme,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Theme") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = themeExpanded) },
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                )
+                ExposedDropdownMenu(
+                    expanded = themeExpanded,
+                    onDismissRequest = { themeExpanded = false },
+                ) {
+                    THEMES.forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                theme = value
+                                ThemeState.mode = value
+                                themeExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Language selector
+            ExposedDropdownMenuBox(
+                expanded = languageExpanded,
+                onExpandedChange = { languageExpanded = it },
+            ) {
+                OutlinedTextField(
+                    value = LANGUAGES.firstOrNull { it.first == language }?.second ?: language,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Language") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded) },
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                )
+                ExposedDropdownMenu(
+                    expanded = languageExpanded,
+                    onDismissRequest = { languageExpanded = false },
+                ) {
+                    LANGUAGES.forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                language = value
+                                languageExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Memory auto-recall toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Memory Auto-Recall")
+                Switch(
+                    checked = memoryAutoRecall,
+                    onCheckedChange = { memoryAutoRecall = it },
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Memory extraction interval
+            Text("Memory Extraction Interval: ${memoryInterval.toInt()} messages")
+            Slider(
+                value = memoryInterval,
+                onValueChange = { memoryInterval = it },
+                valueRange = 5f..30f,
+                steps = 24,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Spacer(Modifier.height(32.dp))
 
