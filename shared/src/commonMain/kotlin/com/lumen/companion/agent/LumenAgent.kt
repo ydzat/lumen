@@ -178,19 +178,9 @@ class LumenAgent(
         if (memories.isEmpty()) return null
 
         val memoryContext = memories.joinToString("\n") { "- ${it.content}" }
-        val personaPrompt = persona?.systemPrompt ?: DEFAULT_SYSTEM_PROMPT
         val recallSection = "\n\nContext from previous conversations:\n$memoryContext"
-
-        val prompt = if (tools.isEmpty()) {
-            personaPrompt + recallSection
-        } else {
-            val toolDescriptions = tools.joinToString("\n") { "- ${it.name}: ${it.descriptor.description}" }
-            """$personaPrompt$recallSection
-
-Available tools:
-$toolDescriptions
-Use these tools when contextually appropriate."""
-        }
+        val personaPrompt = persona?.systemPrompt ?: DEFAULT_SYSTEM_PROMPT
+        val prompt = assembleSystemPrompt(personaPrompt + recallSection)
 
         return prompt to memories.size
     }
@@ -258,13 +248,15 @@ Use these tools when contextually appropriate."""
     }
 
     private fun buildSystemPrompt(): String {
-        val personaPrompt = persona?.systemPrompt
-            ?: DEFAULT_SYSTEM_PROMPT
+        val personaPrompt = persona?.systemPrompt ?: DEFAULT_SYSTEM_PROMPT
+        return assembleSystemPrompt(personaPrompt)
+    }
 
-        if (tools.isEmpty()) return personaPrompt
+    private fun assembleSystemPrompt(basePrompt: String): String {
+        if (tools.isEmpty()) return basePrompt
 
         val toolDescriptions = tools.joinToString("\n") { "- ${it.name}: ${it.descriptor.description}" }
-        return """$personaPrompt
+        return """$basePrompt
 
 Available tools:
 $toolDescriptions
