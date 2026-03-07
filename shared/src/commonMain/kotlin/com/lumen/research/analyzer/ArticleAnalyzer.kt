@@ -31,8 +31,8 @@ class ArticleAnalyzer(
             keywords = keywords,
             embedding = embedding,
         )
-        db.articleBox.put(updated)
-        return db.articleBox.get(article.id)
+        val id = db.articleBox.put(updated)
+        return db.articleBox.get(id)
     }
 
     suspend fun analyzeBatch(articles: List<Article>): List<Article> {
