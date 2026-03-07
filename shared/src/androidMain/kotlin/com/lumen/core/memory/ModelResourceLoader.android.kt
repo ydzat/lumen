@@ -19,11 +19,13 @@ actual class ModelResourceLoader(private val context: Context) {
 
     private fun extractAsset(assetPath: String, target: File): String {
         if (!target.exists()) {
+            val tmpFile = File(target.parentFile, "${target.name}.tmp")
             context.assets.open(assetPath).use { input ->
-                target.outputStream().use { output ->
+                tmpFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             }
+            tmpFile.renameTo(target)
         }
         return target.absolutePath
     }

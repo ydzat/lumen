@@ -15,8 +15,24 @@ echo "Downloading tokenizer.json..."
 curl -L -o "$JVM_DIR/tokenizer.json" "$BASE_URL/tokenizer.json"
 cp "$JVM_DIR/tokenizer.json" "$ANDROID_DIR/tokenizer.json"
 
-echo "Downloading JVM model (quint8_avx2, ~22MB)..."
-curl -L -o "$JVM_DIR/model.onnx" "$BASE_URL/onnx/model_quint8_avx2.onnx"
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64|amd64)
+        JVM_MODEL="model_quint8_avx2.onnx"
+        echo "Detected x86_64 -- using AVX2 quantized model"
+        ;;
+    arm64|aarch64)
+        JVM_MODEL="model_qint8_arm64.onnx"
+        echo "Detected ARM64 -- using ARM quantized model"
+        ;;
+    *)
+        JVM_MODEL="model.onnx"
+        echo "Unknown architecture '$ARCH' -- using unquantized model"
+        ;;
+esac
+
+echo "Downloading JVM model (~22MB)..."
+curl -L -o "$JVM_DIR/model.onnx" "$BASE_URL/onnx/$JVM_MODEL"
 
 echo "Downloading Android model (qint8_arm64, ~22MB)..."
 curl -L -o "$ANDROID_DIR/model.onnx" "$BASE_URL/onnx/model_qint8_arm64.onnx"

@@ -29,7 +29,7 @@ class OnnxEmbeddingClient(
     }
 
     override suspend fun embedBatch(texts: List<String>): List<FloatArray> {
-        require(texts.isNotEmpty()) { "Input texts must not be empty" }
+        if (texts.isEmpty()) return emptyList()
 
         val encodings = texts.map { tokenizer.encode(it) }
         val maxLen = encodings.maxOf { it.ids.size }

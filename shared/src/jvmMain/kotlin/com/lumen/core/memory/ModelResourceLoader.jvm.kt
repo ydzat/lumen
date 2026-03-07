@@ -22,11 +22,13 @@ actual class ModelResourceLoader {
                 ?: throw IllegalStateException(
                     "Model resource '$resourcePath' not found. Run scripts/download-model.sh first."
                 )
+            val tmpFile = File(target.parentFile, "${target.name}.tmp")
             stream.use { input ->
-                target.outputStream().use { output ->
+                tmpFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             }
+            tmpFile.renameTo(target)
         }
         return target.absolutePath
     }
