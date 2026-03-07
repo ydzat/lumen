@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.lumen.companion.persona.PersonaManager
 import com.lumen.core.di.companionModule
 import com.lumen.core.di.memoryModule
 import com.lumen.core.di.platformModule
@@ -21,12 +22,14 @@ import com.lumen.core.di.researchModule
 import com.lumen.ui.navigation.Tab
 import com.lumen.ui.navigation.TabContent
 import com.lumen.ui.theme.LumenTheme
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
 fun main() {
     startKoin {
         modules(platformModule, companionModule, memoryModule, researchModule)
     }
+    GlobalContext.get().get<PersonaManager>().seedBuiltInPersonas()
     application {
         Window(
             onCloseRequest = ::exitApplication,
