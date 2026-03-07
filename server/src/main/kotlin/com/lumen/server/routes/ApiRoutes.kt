@@ -12,9 +12,8 @@ fun Route.apiRoutes() {
             sourceRoutes()
             projectRoutes()
             digestRoutes()
-            route("/chat") {
-                // #84: Chat REST API
-            }
+            chatRoutes()
+            personaRoutes()
             route("/settings") {
                 // #85: Settings REST API
             }
