@@ -149,6 +149,9 @@ class LumenAgent(
                     val responseText = responses.firstOrNull()?.content ?: ""
                     cm.addMessage(conversationId, "assistant", responseText)
                     emit(ChatEvent.AssistantResponse(responseText))
+                    maybeGenerateTitle(conversationId, cm, userMessage)?.let { title ->
+                        emit(ChatEvent.TitleGenerated(title))
+                    }
                     maybeExtractMemories(conversationId, cm)?.let { count ->
                         emit(ChatEvent.MemoryExtracted(count))
                     }
@@ -198,6 +201,20 @@ class LumenAgent(
         val prompt = assembleSystemPrompt(personaPrompt + recallSection)
 
         return prompt to memories.size
+    }
+
+    private suspend fun maybeGenerateTitle(
+        conversationId: Long,
+        cm: ConversationManager,
+        userMessage: String,
+    ): String? {
+        val conversation = cm.getConversation(conversationId) ?: return null
+        if (conversation.title != DEFAULT_TITLE) return null
+        if (conversation.messageCount > 2) return null
+
+        val title = generateTitle(userMessage) ?: return null
+        cm.updateTitle(conversationId, title)
+        return title
     }
 
     private suspend fun maybeExtractMemories(
@@ -257,6 +274,25 @@ class LumenAgent(
         }
     }
 
+    suspend fun generateTitle(userMessage: String): String? {
+        if (config.apiKey.isBlank()) return null
+        return try {
+            val prompt = Prompt(
+                listOf(
+                    Message.System(TITLE_GENERATION_PROMPT, RequestMetaInfo.Empty),
+                    Message.User(userMessage, RequestMetaInfo.Empty),
+                ),
+                "lumen-title",
+                LLMParams(),
+            )
+            val responses = llmClient.execute(prompt, model, emptyList())
+            val title = responses.firstOrNull()?.content?.trim()?.removeSurrounding("\"")
+            if (title.isNullOrBlank() || title.length > MAX_TITLE_LENGTH) null else title
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun close() {
         llmClient.close()
         httpClient.close()
@@ -293,9 +329,14 @@ class LumenAgent(
 
     companion object {
         internal const val DEFAULT_SYSTEM_PROMPT = "You are Lumen, a personal AI assistant."
+        internal const val DEFAULT_TITLE = "New conversation"
         private const val MAX_TOOL_ITERATIONS = 5
         private const val AUTO_RECALL_LIMIT = 3
         private const val CONNECT_TIMEOUT_MS = 30_000L
         private const val REQUEST_TIMEOUT_MS = 120_000L
+        private const val MAX_TITLE_LENGTH = 50
+        private const val TITLE_GENERATION_PROMPT =
+            "Generate a concise title (max 6 words) for a conversation that starts with the following message. " +
+                "Respond with only the title, no quotes, no punctuation at the end."
     }
 }

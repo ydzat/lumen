@@ -7,6 +7,7 @@ sealed interface ChatEvent {
     data class AssistantResponse(val text: String) : ChatEvent
     data class MemoryRecalled(val count: Int) : ChatEvent
     data class MemoryExtracted(val count: Int) : ChatEvent
+    data class TitleGenerated(val title: String) : ChatEvent
     data class Error(val message: String) : ChatEvent
     data object Done : ChatEvent
 }

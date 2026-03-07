@@ -372,7 +372,7 @@ private fun NewConversationDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val effectiveTitle = title.ifBlank { "New conversation" }
+                    val effectiveTitle = title.ifBlank { LumenAgent.DEFAULT_TITLE }
                     onCreate(effectiveTitle, selectedPersonaId, selectedProjectId)
                 },
             ) { Text("Create") }
@@ -501,6 +501,9 @@ private fun ConversationChatScreen(
                             uiItems.add(ChatUiItem.AssistantMessage(msg, ""))
                             typewriterTarget = event.text
                             typewriterCounter++
+                        }
+                        is ChatEvent.TitleGenerated -> {
+                            conversation = conversation?.copy(title = event.title)
                         }
                         is ChatEvent.MemoryExtracted -> {
                             uiItems.add(ChatUiItem.StatusInfo("Extracted ${event.count} memories"))
