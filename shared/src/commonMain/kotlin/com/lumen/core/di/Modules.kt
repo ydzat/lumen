@@ -9,6 +9,7 @@ import com.lumen.core.memory.LlmCall
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.RemoteEmbeddingClient
 import com.lumen.core.memory.SemanticCompressor
+import com.lumen.core.memory.IntentRetriever
 import com.lumen.core.memory.SemanticSynthesizer
 import io.ktor.client.HttpClient
 import org.koin.core.module.Module
@@ -35,7 +36,8 @@ val memoryModule = module {
     }
     single { SemanticCompressor(get()) }
     single { SemanticSynthesizer(get(), get(), get()) }
-    single { MemoryManager(get(), get(), get(), get()) }
+    single { IntentRetriever(get(), get(), get()) }
+    single { MemoryManager(get(), get(), get(), get(), get()) }
 }
 
 val researchModule = module {

@@ -2,13 +2,13 @@ package com.lumen.core.memory
 
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.MemoryEntry
-import com.lumen.core.database.entities.MemoryEntry_
 
 class MemoryManager(
     private val database: LumenDatabase,
     private val embeddingClient: EmbeddingClient,
     private val compressor: SemanticCompressor,
     private val synthesizer: SemanticSynthesizer,
+    private val intentRetriever: IntentRetriever,
 ) {
 
     suspend fun store(content: String, category: String, source: String): MemoryEntry {
@@ -27,11 +27,7 @@ class MemoryManager(
 
     suspend fun recall(query: String, limit: Int = 5): List<MemoryEntry> {
         require(limit > 0) { "limit must be positive, got $limit" }
-        val queryEmbedding = embeddingClient.embed(query)
-        val results = database.memoryEntryBox.query()
-            .nearestNeighbors(MemoryEntry_.embedding, queryEmbedding, limit)
-            .build()
-            .use { it.find() }
+        val results = intentRetriever.retrieve(query, limit)
 
         val now = System.currentTimeMillis()
         for (entry in results) {

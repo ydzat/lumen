@@ -157,7 +157,8 @@ class SemanticCompressorTest {
             }
             val compressor = SemanticCompressor(fakeLlm)
             val noopSynthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" }, fakeEmbedding, similarityThreshold = 1.0f)
-            val manager = MemoryManager(db, fakeEmbedding, compressor, noopSynthesizer)
+            val directRetriever = IntentRetriever(db, LlmCall { _, _ -> "" }, fakeEmbedding, shortQueryThreshold = Int.MAX_VALUE)
+            val manager = MemoryManager(db, fakeEmbedding, compressor, noopSynthesizer, directRetriever)
 
             val entries = manager.storeFromConversation("User: I study AI and I like tea")
 
