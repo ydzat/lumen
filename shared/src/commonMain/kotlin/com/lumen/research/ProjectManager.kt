@@ -49,9 +49,9 @@ class ProjectManager(
     }
 
     fun delete(id: Long) {
-        val articles = db.articleBox.all.filter { id.toString() in parseProjectIds(it.projectIds) }
+        val articles = db.articleBox.all.filter { id.toString() in parseCsvSet(it.projectIds) }
         for (article in articles) {
-            val updatedIds = parseProjectIds(article.projectIds) - id.toString()
+            val updatedIds = parseCsvSet(article.projectIds) - id.toString()
             db.articleBox.put(article.copy(projectIds = updatedIds.joinToString(",")))
         }
         db.researchProjectBox.remove(id)
@@ -73,7 +73,7 @@ class ProjectManager(
 
     fun assignArticle(articleId: Long, projectId: Long) {
         val article = db.articleBox.get(articleId) ?: return
-        val ids = parseProjectIds(article.projectIds).toMutableSet()
+        val ids = parseCsvSet(article.projectIds).toMutableSet()
         if (ids.add(projectId.toString())) {
             db.articleBox.put(article.copy(projectIds = ids.joinToString(",")))
         }
@@ -81,14 +81,14 @@ class ProjectManager(
 
     fun unassignArticle(articleId: Long, projectId: Long) {
         val article = db.articleBox.get(articleId) ?: return
-        val ids = parseProjectIds(article.projectIds).toMutableSet()
+        val ids = parseCsvSet(article.projectIds).toMutableSet()
         if (ids.remove(projectId.toString())) {
             db.articleBox.put(article.copy(projectIds = ids.joinToString(",")))
         }
     }
 
     fun getArticlesForProject(projectId: Long): List<Article> {
-        return db.articleBox.all.filter { projectId.toString() in parseProjectIds(it.projectIds) }
+        return db.articleBox.all.filter { projectId.toString() in parseCsvSet(it.projectIds) }
     }
 
     private suspend fun computeEmbedding(name: String, description: String, keywords: String): FloatArray {
@@ -96,8 +96,4 @@ class ProjectManager(
         return embeddingClient.embed(text)
     }
 
-    private fun parseProjectIds(csv: String): Set<String> {
-        if (csv.isBlank()) return emptySet()
-        return csv.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-    }
 }
