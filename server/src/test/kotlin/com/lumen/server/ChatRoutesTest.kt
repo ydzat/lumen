@@ -16,7 +16,6 @@ import com.lumen.core.memory.LlmCall
 import com.lumen.server.dto.ConversationCreateRequest
 import com.lumen.server.dto.ConversationDetailDto
 import com.lumen.server.dto.ConversationDto
-import com.lumen.server.dto.MessageDto
 import com.lumen.server.dto.PersonaCreateRequest
 import com.lumen.server.dto.PersonaDto
 import com.lumen.server.dto.SendMessageRequest
@@ -44,7 +43,6 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.core.context.stopKoin
-import org.koin.core.parameter.parametersOf
 import org.koin.dsl.module
 import org.koin.ktor.plugin.Koin
 import java.io.File
