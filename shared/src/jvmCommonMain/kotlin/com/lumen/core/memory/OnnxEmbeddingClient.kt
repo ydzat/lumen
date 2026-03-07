@@ -5,13 +5,14 @@ import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import java.io.Closeable
 import java.nio.LongBuffer
 import java.nio.file.Path
 import kotlin.math.sqrt
 
 class OnnxEmbeddingClient(
     private val resourceLoader: ModelResourceLoader,
-) : EmbeddingClient {
+) : EmbeddingClient, Closeable {
 
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
 
@@ -60,12 +61,15 @@ class OnnxEmbeddingClient(
 
         return try {
             val results = session.run(inputs)
+            try {
+                @Suppress("UNCHECKED_CAST")
+                val output = results[0].value as Array<Array<FloatArray>>
 
-            @Suppress("UNCHECKED_CAST")
-            val output = results[0].value as Array<Array<FloatArray>>
-
-            (0 until batchSize).map { b ->
-                meanPoolAndNormalize(output[b], encodings[b].attentionMask, maxLen)
+                (0 until batchSize).map { b ->
+                    meanPoolAndNormalize(output[b], encodings[b].attentionMask, maxLen)
+                }
+            } finally {
+                results.close()
             }
         } finally {
             inputIdsTensor.close()
@@ -74,8 +78,9 @@ class OnnxEmbeddingClient(
         }
     }
 
-    fun close() {
+    override fun close() {
         session.close()
+        tokenizer.close()
     }
 
     companion object {

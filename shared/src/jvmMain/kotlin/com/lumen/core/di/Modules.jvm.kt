@@ -15,7 +15,7 @@ import java.io.File
 actual val platformModule: Module = module {
     single { ConfigStore() }
     single { ModelResourceLoader() }
-    single<EmbeddingClient> { OnnxEmbeddingClient(get()) }
+    single<EmbeddingClient> { OnnxEmbeddingClient(get()) } withOptions { onClose { (it as? OnnxEmbeddingClient)?.close() } }
     single {
         val dbDir = File(System.getProperty("user.home"), ".lumen/db")
         createLumenDatabase(PlatformDatabaseConfig(dbDir))
