@@ -5,6 +5,7 @@ import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.cosineSimilarity
+import com.lumen.research.parseCsvSet
 
 class RelevanceScorer(
     private val db: LumenDatabase,
@@ -66,12 +67,12 @@ class RelevanceScorer(
     }
 
     private fun computeKeywordBoost(article: Article, activeProject: ResearchProject?): Float {
-        val articleKeywords = parseKeywords(article.keywords)
+        val articleKeywords = parseCsvSet(article.keywords)
         if (articleKeywords.isEmpty()) return 0f
 
         val referenceKeywords = mutableSetOf<String>()
         if (activeProject != null) {
-            referenceKeywords.addAll(parseKeywords(activeProject.keywords))
+            referenceKeywords.addAll(parseCsvSet(activeProject.keywords))
         }
 
         if (referenceKeywords.isEmpty()) return 0f
@@ -82,8 +83,4 @@ class RelevanceScorer(
         return (overlap.toFloat() / articleKeywords.size).coerceIn(0f, 1f)
     }
 
-    private fun parseKeywords(csv: String): Set<String> {
-        if (csv.isBlank()) return emptySet()
-        return csv.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-    }
 }
