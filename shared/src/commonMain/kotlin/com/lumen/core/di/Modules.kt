@@ -7,6 +7,9 @@ import com.lumen.companion.conversation.ConversationManager
 import com.lumen.companion.persona.PersonaManager
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.database.LumenDatabase
+import com.lumen.core.document.DocumentIngestionService
+import com.lumen.core.document.DocumentParser
+import com.lumen.core.document.TextChunker
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.IntentRetriever
 import com.lumen.core.memory.KoogLlmCall
@@ -72,6 +75,12 @@ val researchModule = module {
     single { DigestGenerator(get(), get(), getOrNull()) }
     single { DigestFormatter() }
     single { CollectorManager(get(), get(), get(), get()) }
+}
+
+val documentModule = module {
+    single { DocumentParser() }
+    single { TextChunker() }
+    single { DocumentIngestionService(get(), get(), get(), get()) }
 }
 
 expect val platformModule: Module

@@ -16,6 +16,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.lumen.companion.persona.PersonaManager
 import com.lumen.core.di.companionModule
+import com.lumen.core.di.documentModule
 import com.lumen.core.di.memoryModule
 import com.lumen.core.di.platformModule
 import com.lumen.core.di.researchModule
@@ -27,7 +28,7 @@ import org.koin.core.context.startKoin
 
 fun main() {
     startKoin {
-        modules(platformModule, companionModule, memoryModule, researchModule)
+        modules(platformModule, companionModule, memoryModule, researchModule, documentModule)
     }
     GlobalContext.get().get<PersonaManager>().seedBuiltInPersonas()
     application {

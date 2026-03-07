@@ -61,6 +61,7 @@ kotlin {
                 implementation(libs.koin.android)
                 implementation(libs.onnxruntime.android)
                 implementation(libs.androidx.work.runtime)
+                implementation(libs.pdfbox.android)
             }
         }
 
@@ -68,6 +69,7 @@ kotlin {
             dependsOn(jvmCommonMain)
             dependencies {
                 implementation(libs.ktor.client.cio)
+                implementation(libs.pdfbox)
             }
         }
 
