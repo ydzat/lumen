@@ -179,11 +179,12 @@ class ArchiveManagerTest {
 
         // Create archive with same URL
         val output = ByteArrayOutputStream()
-        val otherDb = createTempDatabase()
+        val (otherDb, otherDir) = createTempDatabase()
         otherDb.sourceBox.put(Source(name = "Other Name", url = "https://example.com/feed", createdAt = 200L))
         val otherManager = ArchiveManager(otherDb, configStore)
         otherManager.export(output)
         otherDb.close()
+        otherDir.deleteRecursively()
 
         archiveManager.import(ByteArrayInputStream(output.toByteArray()))
 
@@ -217,11 +218,11 @@ class ArchiveManagerTest {
         assertTrue(ArchiveManager.MASKED_API_KEY in configJson)
     }
 
-    private fun createTempDatabase(): LumenDatabase {
+    private fun createTempDatabase(): Pair<LumenDatabase, File> {
         val dir = File(System.getProperty("java.io.tmpdir"), "objectbox-archive-other-${System.nanoTime()}")
         dir.mkdirs()
         val store = MyObjectBox.builder().baseDirectory(dir).build()
-        return LumenDatabase(store)
+        return LumenDatabase(store) to dir
     }
 
     private fun readZipEntryNames(bytes: ByteArray): Set<String> {
