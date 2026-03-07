@@ -8,6 +8,7 @@ class MemoryManager(
     private val database: LumenDatabase,
     private val embeddingClient: EmbeddingClient,
     private val compressor: SemanticCompressor,
+    private val synthesizer: SemanticSynthesizer,
 ) {
 
     suspend fun store(content: String, category: String, source: String): MemoryEntry {
@@ -21,8 +22,14 @@ class MemoryManager(
             createdAt = now,
             updatedAt = now,
         )
-        database.memoryEntryBox.put(entry)
-        return entry
+        val result = synthesizer.synthesize(entry)
+        return when (result) {
+            is SynthesisResult.NoMatch, is SynthesisResult.Kept -> {
+                database.memoryEntryBox.put(entry)
+                entry
+            }
+            is SynthesisResult.Merged -> result.entry
+        }
     }
 
     suspend fun recall(query: String, limit: Int = 5): List<MemoryEntry> {
@@ -61,8 +68,14 @@ class MemoryManager(
                 createdAt = now,
                 updatedAt = now,
             )
-            database.memoryEntryBox.put(entry)
-            entry
+            val result = synthesizer.synthesize(entry)
+            when (result) {
+                is SynthesisResult.NoMatch, is SynthesisResult.Kept -> {
+                    database.memoryEntryBox.put(entry)
+                    entry
+                }
+                is SynthesisResult.Merged -> result.entry
+            }
         }
     }
 

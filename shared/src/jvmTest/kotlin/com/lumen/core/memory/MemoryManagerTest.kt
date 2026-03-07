@@ -42,7 +42,8 @@ class MemoryManagerTest {
             .build()
         db = LumenDatabase(store)
         val fakeCompressor = SemanticCompressor(LlmCall { _, _ -> "[]" })
-        manager = MemoryManager(db, fakeEmbeddingClient, fakeCompressor)
+        val noopSynthesizer = SemanticSynthesizer(db, LlmCall { _, _ -> "" }, similarityThreshold = 1.0f)
+        manager = MemoryManager(db, fakeEmbeddingClient, fakeCompressor, noopSynthesizer)
     }
 
     @AfterTest
