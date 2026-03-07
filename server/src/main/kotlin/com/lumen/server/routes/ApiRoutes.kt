@@ -14,9 +14,7 @@ fun Route.apiRoutes() {
             digestRoutes()
             chatRoutes()
             personaRoutes()
-            route("/settings") {
-                // #85: Settings REST API
-            }
+            settingsRoutes()
             route("/documents") {
                 // #86: Document Upload REST API
             }
