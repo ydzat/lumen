@@ -31,11 +31,11 @@ class DocumentManager(
     }
 
     fun delete(documentId: Long) {
-        val query = db.documentChunkBox.query()
-            .equal(DocumentChunk_.documentId, documentId)
-            .build()
         db.store.runInTx {
-            query.use { it.remove() }
+            db.documentChunkBox.query()
+                .equal(DocumentChunk_.documentId, documentId)
+                .build()
+                .use { it.remove() }
             db.documentBox.remove(documentId)
         }
     }
