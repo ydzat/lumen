@@ -11,9 +11,16 @@ import kotlinx.serialization.Serializable
 data class ErrorResponse(val error: String, val status: Int)
 
 class NotFoundException(message: String) : RuntimeException(message)
+class PayloadTooLargeException(message: String) : RuntimeException(message)
 
 fun Application.configureErrorHandling() {
     install(StatusPages) {
+        exception<PayloadTooLargeException> { call, cause ->
+            call.respond(
+                HttpStatusCode.PayloadTooLarge,
+                ErrorResponse(cause.message ?: "Payload too large", 413),
+            )
+        }
         exception<NotFoundException> { call, cause ->
             call.respond(
                 HttpStatusCode.NotFound,

@@ -15,9 +15,7 @@ fun Route.apiRoutes() {
             chatRoutes()
             personaRoutes()
             settingsRoutes()
-            route("/documents") {
-                // #86: Document Upload REST API
-            }
+            documentRoutes()
         }
     }
 }
