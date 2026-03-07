@@ -3,6 +3,7 @@ package com.lumen.core.di
 import com.lumen.companion.agent.LumenAgent
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.memory.EmbeddingClient
+import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.RemoteEmbeddingClient
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -19,6 +20,7 @@ val memoryModule = module {
         val config = get<ConfigStore>().load().llm
         RemoteEmbeddingClient(config)
     }
+    single { MemoryManager(get(), get()) }
 }
 
 val researchModule = module {
