@@ -62,6 +62,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -645,6 +646,9 @@ private fun ConversationChatScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
+            // Group consecutive tool calls for compact display
+            val groupedItems by remember { derivedStateOf { groupToolCalls(uiItems) } }
+
             // Message list
             LazyColumn(
                 state = listState,
@@ -652,25 +656,28 @@ private fun ConversationChatScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                items(uiItems.size) { index ->
-                    when (val item = uiItems[index]) {
-                        is ChatUiItem.UserMessage -> UserBubble(item.message.content)
-                        is ChatUiItem.AssistantMessage -> AssistantBubble(
-                            text = item.displayText,
-                            onTapToSkip = {
-                                if (!typewriterDone) {
-                                    typewriterDone = true
-                                    typewriterDisplay = typewriterTarget
-                                    val lastIdx = uiItems.indexOfLast { it is ChatUiItem.AssistantMessage }
-                                    if (lastIdx >= 0) {
-                                        val a = uiItems[lastIdx] as ChatUiItem.AssistantMessage
-                                        uiItems[lastIdx] = a.copy(displayText = typewriterTarget)
+                items(groupedItems.size) { index ->
+                    when (val item = groupedItems[index]) {
+                        is DisplayItem.Single -> when (val ui = item.item) {
+                            is ChatUiItem.UserMessage -> UserBubble(ui.message.content)
+                            is ChatUiItem.AssistantMessage -> AssistantBubble(
+                                text = ui.displayText,
+                                onTapToSkip = {
+                                    if (!typewriterDone) {
+                                        typewriterDone = true
+                                        typewriterDisplay = typewriterTarget
+                                        val lastIdx = uiItems.indexOfLast { it is ChatUiItem.AssistantMessage }
+                                        if (lastIdx >= 0) {
+                                            val a = uiItems[lastIdx] as ChatUiItem.AssistantMessage
+                                            uiItems[lastIdx] = a.copy(displayText = typewriterTarget)
+                                        }
                                     }
-                                }
-                            },
-                        )
-                        is ChatUiItem.ToolCall -> ToolCallCard(item)
-                        is ChatUiItem.StatusInfo -> StatusChip(item.text)
+                                },
+                            )
+                            is ChatUiItem.ToolCall -> ToolCallCard(ui)
+                            is ChatUiItem.StatusInfo -> StatusChip(ui.text)
+                        }
+                        is DisplayItem.ToolGroup -> ToolCallGroupCard(item.calls)
                     }
                 }
             }
@@ -834,6 +841,138 @@ private fun AssistantBubble(text: String, onTapToSkip: () -> Unit) {
         }
     }
 }
+
+private sealed interface DisplayItem {
+    data class Single(val item: ChatUiItem) : DisplayItem
+    data class ToolGroup(val calls: List<ChatUiItem.ToolCall>) : DisplayItem
+}
+
+private fun groupToolCalls(items: List<ChatUiItem>): List<DisplayItem> {
+    val result = mutableListOf<DisplayItem>()
+    var toolBatch = mutableListOf<ChatUiItem.ToolCall>()
+
+    for (item in items) {
+        if (item is ChatUiItem.ToolCall) {
+            toolBatch.add(item)
+        } else {
+            if (toolBatch.isNotEmpty()) {
+                if (toolBatch.size == 1) {
+                    result.add(DisplayItem.Single(toolBatch.first()))
+                } else {
+                    result.add(DisplayItem.ToolGroup(toolBatch.toList()))
+                }
+                toolBatch = mutableListOf()
+            }
+            result.add(DisplayItem.Single(item))
+        }
+    }
+    if (toolBatch.isNotEmpty()) {
+        if (toolBatch.size == 1) {
+            result.add(DisplayItem.Single(toolBatch.first()))
+        } else {
+            result.add(DisplayItem.ToolGroup(toolBatch.toList()))
+        }
+    }
+    return result
+}
+
+@Composable
+private fun ToolCallGroupCard(calls: List<ChatUiItem.ToolCall>) {
+    var expanded by remember { mutableStateOf(false) }
+    val isAnyLoading = calls.any { it.isLoading }
+    val toolNames = calls.joinToString(", ") { formatToolName(it.toolName) }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { expanded = !expanded },
+            ) {
+                if (isAnyLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Code,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(
+                    text = toolNames,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    calls.forEach { call ->
+                        ToolCallDetail(call)
+                        Spacer(Modifier.height(4.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToolCallDetail(call: ChatUiItem.ToolCall) {
+    val argsSummary = remember(call.args) { formatArgsSummary(call.args) }
+    Column {
+        Text(
+            text = formatToolName(call.toolName),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (argsSummary.isNotEmpty()) {
+            Text(
+                text = argsSummary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (call.result != null) {
+            Text(
+                text = call.result,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private fun formatToolName(name: String): String =
+    name.replace("_", " ").replaceFirstChar { it.uppercase() }
 
 @Composable
 private fun ToolCallCard(item: ChatUiItem.ToolCall) {
