@@ -124,7 +124,8 @@ class CollectorManager(
         )
     }
 
-    suspend fun runNow(): PipelineResult = runPipeline()
+    suspend fun runNow(progress: PipelineProgress? = null): PipelineResult =
+        runPipeline(progress = progress)
 
     suspend fun fetchOnly(progress: PipelineProgress? = null): List<Article> {
         progress?.onProgress(PipelineStage.FETCHING, 0, 1)
