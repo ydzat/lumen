@@ -39,6 +39,36 @@ class SourceManager(private val db: LumenDatabase) {
         return db.sourceBox.get(id)
     }
 
+    fun recordFailure(id: Long, error: String): Source? {
+        val source = db.sourceBox.get(id) ?: return null
+        val failures = source.consecutiveFailures + 1
+        val now = System.currentTimeMillis()
+        val updated = source.copy(
+            consecutiveFailures = failures,
+            lastError = error,
+            nextRetryAt = RetryPolicy.computeNextRetryAt(now, failures),
+        )
+        db.sourceBox.put(updated)
+        return db.sourceBox.get(id)
+    }
+
+    fun recordSuccess(id: Long): Source? {
+        val source = db.sourceBox.get(id) ?: return null
+        val updated = source.copy(
+            consecutiveFailures = 0,
+            lastError = "",
+            nextRetryAt = 0,
+            lastFetchedAt = System.currentTimeMillis(),
+        )
+        db.sourceBox.put(updated)
+        return db.sourceBox.get(id)
+    }
+
+    fun listRetryable(): List<Source> {
+        val now = System.currentTimeMillis()
+        return db.sourceBox.all.filter { it.enabled && RetryPolicy.isRetryable(it, now) }
+    }
+
     fun seedDefaultsIfEmpty() {
         if (db.sourceBox.isEmpty) {
             val now = System.currentTimeMillis()
