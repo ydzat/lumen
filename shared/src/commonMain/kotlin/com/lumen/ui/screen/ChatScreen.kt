@@ -62,6 +62,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -645,6 +646,9 @@ private fun ConversationChatScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
+            // Group consecutive tool calls for compact display
+            val groupedItems by remember { derivedStateOf { groupToolCalls(uiItems) } }
+
             // Message list
             LazyColumn(
                 state = listState,
@@ -652,7 +656,6 @@ private fun ConversationChatScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                val groupedItems = groupToolCalls(uiItems)
                 items(groupedItems.size) { index ->
                     when (val item = groupedItems[index]) {
                         is DisplayItem.Single -> when (val ui = item.item) {
