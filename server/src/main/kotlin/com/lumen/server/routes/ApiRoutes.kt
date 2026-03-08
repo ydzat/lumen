@@ -16,6 +16,7 @@ fun Route.apiRoutes() {
             personaRoutes()
             settingsRoutes()
             documentRoutes()
+            archiveRoutes()
         }
     }
 }

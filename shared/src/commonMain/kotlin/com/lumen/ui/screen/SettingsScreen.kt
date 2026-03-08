@@ -397,6 +397,36 @@ private fun SettingsMainScreen(
             ) {
                 Text("Manage Research Projects")
             }
+
+            Spacer(Modifier.height(24.dp))
+
+            Text("Backup", style = MaterialTheme.typography.headlineSmall)
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Export is available via server API (POST /api/archive/export)")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Export Data")
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Import is available via server API (POST /api/archive/import)")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Import Data")
+            }
         }
     }
 }
