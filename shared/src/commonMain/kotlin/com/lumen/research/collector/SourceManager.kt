@@ -46,35 +46,39 @@ class SourceManager(private val db: LumenDatabase) {
         }
     }
 
+    fun seedNewDefaults() {
+        val existingUrls = db.sourceBox.all.map { it.url }.toSet()
+        val now = System.currentTimeMillis()
+        val newSources = DEFAULT_SOURCES
+            .filter { it.url !in existingUrls }
+            .map { it.copy(createdAt = now) }
+        if (newSources.isNotEmpty()) {
+            db.sourceBox.put(newSources)
+        }
+    }
+
     companion object {
         val DEFAULT_SOURCES = listOf(
             Source(
                 name = "arXiv CS.AI",
-                url = "https://rss.arxiv.org/rss/cs.AI",
-                type = "RSS",
+                url = "https://export.arxiv.org/api/query?search_query=cat:cs.AI&sortBy=submittedDate&sortOrder=descending",
+                type = "ARXIV_API",
                 category = "academic",
                 description = "Artificial Intelligence",
             ),
             Source(
                 name = "arXiv CS.LG",
-                url = "https://rss.arxiv.org/rss/cs.LG",
-                type = "RSS",
+                url = "https://export.arxiv.org/api/query?search_query=cat:cs.LG&sortBy=submittedDate&sortOrder=descending",
+                type = "ARXIV_API",
                 category = "academic",
                 description = "Machine Learning",
             ),
             Source(
-                name = "arXiv CS.CL",
-                url = "https://rss.arxiv.org/rss/cs.CL",
-                type = "RSS",
+                name = "Semantic Scholar",
+                url = "https://api.semanticscholar.org/graph/v1/paper/search",
+                type = "SEMANTIC_SCHOLAR",
                 category = "academic",
-                description = "Computation and Language",
-            ),
-            Source(
-                name = "arXiv CS.CV",
-                url = "https://rss.arxiv.org/rss/cs.CV",
-                type = "RSS",
-                category = "academic",
-                description = "Computer Vision and Pattern Recognition",
+                description = "AI and ML research papers",
             ),
             Source(
                 name = "Hacker News",
@@ -82,6 +86,27 @@ class SourceManager(private val db: LumenDatabase) {
                 type = "RSS",
                 category = "tech",
                 description = "Hacker News Front Page",
+            ),
+            Source(
+                name = "Anthropic Blog",
+                url = "https://www.anthropic.com/feed.xml",
+                type = "RSS",
+                category = "tech",
+                description = "Anthropic research and announcements",
+            ),
+            Source(
+                name = "OpenAI Blog",
+                url = "https://openai.com/blog/rss.xml",
+                type = "RSS",
+                category = "tech",
+                description = "OpenAI research and announcements",
+            ),
+            Source(
+                name = "GitHub Releases",
+                url = "pytorch/pytorch,huggingface/transformers",
+                type = "GITHUB_RELEASES",
+                category = "tech",
+                description = "Release tracking for key ML repositories",
             ),
         )
     }

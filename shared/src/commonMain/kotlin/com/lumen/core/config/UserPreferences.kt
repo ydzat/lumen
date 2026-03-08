@@ -10,4 +10,5 @@ data class UserPreferences(
     val memoryExtractionInterval: Int = 10,
     val hasCompletedOnboarding: Boolean = false,
     val analysisMaxPerCycle: Int = 10,
+    val dailyArticleBudget: Int = 100,
 )

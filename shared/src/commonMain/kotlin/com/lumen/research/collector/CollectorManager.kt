@@ -32,6 +32,7 @@ class CollectorManager(
 
     suspend fun runPipeline(
         analysisBudget: Int = 10,
+        fetchBudget: Int = 100,
         progress: PipelineProgress? = null,
     ): PipelineResult {
         // 0. Generate spark keywords (cross-project discovery)
@@ -49,7 +50,7 @@ class CollectorManager(
         // 1. Fetch
         progress?.onProgress(PipelineStage.FETCHING, 0, 1)
         val (fetchedArticles, fetchErrors) = if (dataSources.isNotEmpty() && sourceManager != null) {
-            fetchViaDataSources(buildFetchContext(sparkKeywords = sparkKeywords))
+            fetchViaDataSources(buildFetchContext(budget = fetchBudget, sparkKeywords = sparkKeywords))
         } else {
             emptyList<Article>() to emptyList<String>()
         }

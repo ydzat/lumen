@@ -165,6 +165,14 @@ fun SourcesScreen(onBack: () -> Unit) {
     }
 }
 
+private fun displaySourceType(type: String): String = when (type.uppercase()) {
+    "ARXIV_API" -> "arXiv API"
+    "SEMANTIC_SCHOLAR" -> "Semantic Scholar"
+    "GITHUB_RELEASES" -> "GitHub Releases"
+    "RSS" -> "RSS"
+    else -> type
+}
+
 @Composable
 private fun SourceCard(
     source: Source,
@@ -190,6 +198,11 @@ private fun SourceCard(
                     maxLines = 1,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = displaySourceType(source.type),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
                     if (source.category.isNotBlank()) {
                         Text(
                             text = source.category,
@@ -204,6 +217,21 @@ private fun SourceCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                }
+                if (source.consecutiveFailures > 0) {
+                    Text(
+                        text = "${source.consecutiveFailures} consecutive failure(s)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                if (source.lastError.isNotBlank()) {
+                    Text(
+                        text = source.lastError,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 2,
+                    )
                 }
             }
 
