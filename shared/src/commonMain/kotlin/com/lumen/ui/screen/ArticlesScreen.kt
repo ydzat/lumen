@@ -111,8 +111,9 @@ fun ArticlesScreen() {
     var isAnalyzing by remember { mutableStateOf(false) }
     var projectExpanded by remember { mutableStateOf(false) }
     var articleSections by remember { mutableStateOf<List<ArticleSection>>(emptyList()) }
-    var deepAnalysisLoading by remember { mutableStateOf(false) }
+    var localSections by remember { mutableStateOf<List<DeepAnalysisService.LocalSection>>(emptyList()) }
     var sectionLoadingIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var sectionAnalyzingIndices by remember { mutableStateOf<Set<Int>>(emptySet()) }
 
     // Initialize activeProjectId from DB once on first composition
     LaunchedEffect(Unit) {
@@ -497,24 +498,36 @@ fun ArticlesScreen() {
 
     // Load sections when detail article changes
     LaunchedEffect(detailArticle?.id) {
-        detailArticle?.let {
-            articleSections = deepAnalysisService.getSections(it.id)
+        detailArticle?.let { art ->
+            articleSections = deepAnalysisService.getSections(art.id)
+            val rawContent = art.content.ifBlank { art.summary }
+            localSections = if (rawContent.isNotBlank()) {
+                deepAnalysisService.splitIntoSections(rawContent)
+            } else {
+                emptyList()
+            }
         } ?: run {
             articleSections = emptyList()
+            localSections = emptyList()
         }
     }
 
     // Full detail screen
+    val activeProjectName = projects.firstOrNull { it.id == activeProjectId }?.name ?: ""
+
     detailArticle?.let { article ->
         ArticleDetailScreen(
             article = article,
             sourceName = sourceNames[article.sourceId] ?: "Unknown",
+            activeProjectName = activeProjectName,
             sections = articleSections,
-            deepAnalysisLoading = deepAnalysisLoading,
+            localSections = localSections,
             sectionLoadingIds = sectionLoadingIds,
+            sectionAnalyzingIndices = sectionAnalyzingIndices,
             onBack = {
                 detailArticle = null
                 articleSections = emptyList()
+                localSections = emptyList()
                 loadData()
             },
             onStarToggle = {
@@ -546,23 +559,20 @@ fun ArticlesScreen() {
                 db.articleBox.put(updated)
                 detailArticle = updated
             },
-            onDeepAnalyze = {
+            onAnalyzeSection = { sectionIndex ->
                 scope.launch {
-                    deepAnalysisLoading = true
+                    sectionAnalyzingIndices = sectionAnalyzingIndices + sectionIndex
                     try {
-                        val sections = withContext(Dispatchers.Default) {
-                            deepAnalysisService.extractAndAnalyze(article.id)
+                        withContext(Dispatchers.Default) {
+                            deepAnalysisService.analyzeSingleSection(article.id, sectionIndex)
                         }
-                        articleSections = sections
-                        // Refresh article to get updated deepAnalysisStatus
-                        detailArticle = db.articleBox.get(article.id)
-                        snackbarHostState.showSnackbar("Deep analysis complete")
+                        articleSections = deepAnalysisService.getSections(article.id)
                     } catch (e: Exception) {
                         snackbarHostState.showSnackbar(
-                            "Deep analysis failed: ${e.message ?: "Unknown error"}"
+                            "Analysis failed: ${e.message ?: "Unknown error"}"
                         )
                     } finally {
-                        deepAnalysisLoading = false
+                        sectionAnalyzingIndices = sectionAnalyzingIndices - sectionIndex
                     }
                 }
             },
