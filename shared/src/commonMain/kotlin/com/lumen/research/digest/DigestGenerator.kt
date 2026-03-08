@@ -252,7 +252,7 @@ class DigestGenerator(
     )
 
     @Serializable
-    internal data class SparkSection(
+    data class SparkSection(
         val title: String = "",
         val description: String = "",
         val relatedKeywords: List<String> = emptyList(),

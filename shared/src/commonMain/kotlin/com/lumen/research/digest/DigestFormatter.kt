@@ -93,7 +93,7 @@ class DigestFormatter {
         }
     }
 
-    private fun parseSparkSections(raw: String): List<DigestGenerator.SparkSection> {
+    fun parseSparkSections(raw: String): List<DigestGenerator.SparkSection> {
         if (raw.isBlank()) return emptyList()
         return try {
             json.decodeFromString<List<DigestGenerator.SparkSection>>(raw)
