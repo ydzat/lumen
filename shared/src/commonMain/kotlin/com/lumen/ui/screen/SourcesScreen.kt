@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.lumen.core.database.entities.Source
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.collector.SourceManager
+import com.lumen.ui.displaySourceType
 import org.koin.compose.koinInject
 
 @Composable
@@ -163,14 +164,6 @@ fun SourcesScreen(onBack: () -> Unit) {
             },
         )
     }
-}
-
-private fun displaySourceType(type: String): String = when (type.uppercase()) {
-    "ARXIV_API" -> "arXiv API"
-    "SEMANTIC_SCHOLAR" -> "Semantic Scholar"
-    "GITHUB_RELEASES" -> "GitHub Releases"
-    "RSS" -> "RSS"
-    else -> type
 }
 
 @Composable

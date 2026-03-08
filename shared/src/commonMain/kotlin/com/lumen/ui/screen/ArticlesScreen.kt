@@ -64,6 +64,8 @@ import com.lumen.research.collector.AnalysisStatus
 import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.PipelineStage
 import com.lumen.research.parseCsvSet
+import com.lumen.ui.displaySourceType
+import com.lumen.ui.displaySourceTypeShort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -172,8 +174,10 @@ fun ArticlesScreen() {
                             try {
                                 val result = withContext(Dispatchers.Default) {
                                     collectorManager.runNow { stage, current, total ->
-                                        progressStage = formatStageName(stage)
-                                        progressDetail = if (total > 1) "$current/$total" else ""
+                                        withContext(Dispatchers.Main) {
+                                            progressStage = formatStageName(stage)
+                                            progressDetail = if (total > 1) "$current/$total" else ""
+                                        }
                                     }
                                 }
                                 loadData()
@@ -442,7 +446,7 @@ private fun ArticleCard(
                     )
                     if (article.sourceType.isNotBlank()) {
                         Text(
-                            text = displaySourceType(article.sourceType),
+                            text = displaySourceTypeShort(article.sourceType),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                         )
@@ -575,27 +579,29 @@ private fun ArticleDetailDialog(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (article.aiRelevanceScore > 0f) {
-                        Text(
-                            text = "Relevance: ${"%.0f".format(article.aiRelevanceScore * 100)}%",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
-                    if (article.citationCount > 0) {
-                        Text(
-                            text = "Citations: ${article.citationCount}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
-                    if (article.influentialCitationCount > 0) {
-                        Text(
-                            text = "Influential: ${article.influentialCitationCount}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
+                if (article.aiRelevanceScore > 0f || article.citationCount > 0 || article.influentialCitationCount > 0) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (article.aiRelevanceScore > 0f) {
+                            Text(
+                                text = "Relevance: ${"%.0f".format(article.aiRelevanceScore * 100)}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                        if (article.citationCount > 0) {
+                            Text(
+                                text = "Citations: ${article.citationCount}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                        if (article.influentialCitationCount > 0) {
+                            Text(
+                                text = "Influential: ${article.influentialCitationCount}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
                     }
                 }
 
@@ -629,14 +635,6 @@ private fun ArticleDetailDialog(
             }
         },
     )
-}
-
-private fun displaySourceType(type: String): String = when (type.uppercase()) {
-    "ARXIV_API" -> "arXiv"
-    "SEMANTIC_SCHOLAR" -> "Scholar"
-    "GITHUB_RELEASES" -> "GitHub"
-    "RSS" -> "RSS"
-    else -> type
 }
 
 private fun formatStageName(stage: PipelineStage): String = when (stage) {
