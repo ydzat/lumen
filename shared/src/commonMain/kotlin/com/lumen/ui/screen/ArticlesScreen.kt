@@ -17,10 +17,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,7 +62,10 @@ import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
 import com.lumen.research.collector.AnalysisStatus
 import com.lumen.research.collector.CollectorManager
+import com.lumen.research.collector.PipelineStage
 import com.lumen.research.parseCsvSet
+import com.lumen.ui.displaySourceType
+import com.lumen.ui.displaySourceTypeShort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -89,7 +94,10 @@ fun ArticlesScreen() {
     var activeProjectId by remember { mutableStateOf(0L) }
     var sortMode by remember { mutableStateOf(SortMode.DATE) }
     var filterStarred by remember { mutableStateOf(false) }
+    var showArchived by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var progressStage by remember { mutableStateOf("") }
+    var progressDetail by remember { mutableStateOf("") }
     var selectedArticle by remember { mutableStateOf<Article?>(null) }
     var projectExpanded by remember { mutableStateOf(false) }
 
@@ -105,6 +113,7 @@ fun ArticlesScreen() {
 
         val allArticles = db.articleBox.all
         val filtered = allArticles
+            .filter { showArchived || !it.archived }
             .filter { !filterStarred || it.starred }
             .filter {
                 activeProjectId == 0L ||
@@ -117,7 +126,7 @@ fun ArticlesScreen() {
         }
     }
 
-    LaunchedEffect(sortMode, filterStarred, activeProjectId) {
+    LaunchedEffect(sortMode, filterStarred, showArchived, activeProjectId) {
         loadData()
     }
 
@@ -159,10 +168,17 @@ fun ArticlesScreen() {
                 onClick = {
                     if (!isRefreshing) {
                         isRefreshing = true
+                        progressStage = ""
+                        progressDetail = ""
                         scope.launch {
                             try {
                                 val result = withContext(Dispatchers.Default) {
-                                    collectorManager.runNow()
+                                    collectorManager.runNow { stage, current, total ->
+                                        withContext(Dispatchers.Main) {
+                                            progressStage = formatStageName(stage)
+                                            progressDetail = if (total > 1) "$current/$total" else ""
+                                        }
+                                    }
                                 }
                                 loadData()
                                 val msg = buildString {
@@ -178,6 +194,8 @@ fun ArticlesScreen() {
                                 )
                             } finally {
                                 isRefreshing = false
+                                progressStage = ""
+                                progressDetail = ""
                             }
                         }
                     }
@@ -281,6 +299,48 @@ fun ArticlesScreen() {
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                // Archive filter toggle
+                IconToggleButton(
+                    checked = showArchived,
+                    onCheckedChange = { showArchived = it },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Archive,
+                        contentDescription = if (showArchived) "Hide archived"
+                        else "Show archived",
+                        tint = if (showArchived) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // Pipeline progress banner
+            if (isRefreshing && progressStage.isNotBlank()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text(
+                        text = progressStage,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    if (progressDetail.isNotBlank()) {
+                        Text(
+                            text = progressDetail,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
 
             // Article list
@@ -340,6 +400,12 @@ fun ArticlesScreen() {
             article = article,
             sourceName = sourceNames[article.sourceId] ?: "Unknown",
             onDismiss = { selectedArticle = null },
+            onArchiveToggle = {
+                val updated = article.copy(archived = !article.archived)
+                db.articleBox.put(updated)
+                selectedArticle = updated
+                loadData()
+            },
         )
     }
 }
@@ -378,9 +444,23 @@ private fun ArticleCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                    if (article.sourceType.isNotBlank()) {
+                        Text(
+                            text = displaySourceTypeShort(article.sourceType),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
                     if (article.aiRelevanceScore > 0f) {
                         Text(
                             text = "${"%.0f".format(article.aiRelevanceScore * 100)}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                    if (article.citationCount > 0) {
+                        Text(
+                            text = "${article.citationCount} cited",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.secondary,
                         )
@@ -408,6 +488,13 @@ private fun ArticleCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = statusColor,
                     )
+                    if (article.archived) {
+                        Text(
+                            text = "Archived",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
                 if (article.aiSummary.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
@@ -439,12 +526,25 @@ private fun ArticleDetailDialog(
     article: Article,
     sourceName: String,
     onDismiss: () -> Unit,
+    onArchiveToggle: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("Close")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onArchiveToggle) {
+                Icon(
+                    imageVector = if (article.archived) Icons.Default.Unarchive
+                    else Icons.Default.Archive,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(if (article.archived) "Restore" else "Archive")
             }
         },
         title = {
@@ -463,6 +563,13 @@ private fun ArticleDetailDialog(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                    if (article.sourceType.isNotBlank()) {
+                        Text(
+                            text = displaySourceType(article.sourceType),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
                     if (article.fetchedAt > 0) {
                         Text(
                             text = formatEpochDate(article.fetchedAt),
@@ -472,12 +579,30 @@ private fun ArticleDetailDialog(
                     }
                 }
 
-                if (article.aiRelevanceScore > 0f) {
-                    Text(
-                        text = "Relevance: ${"%.0f".format(article.aiRelevanceScore * 100)}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
+                if (article.aiRelevanceScore > 0f || article.citationCount > 0 || article.influentialCitationCount > 0) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (article.aiRelevanceScore > 0f) {
+                            Text(
+                                text = "Relevance: ${"%.0f".format(article.aiRelevanceScore * 100)}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                        if (article.citationCount > 0) {
+                            Text(
+                                text = "Citations: ${article.citationCount}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                        if (article.influentialCitationCount > 0) {
+                            Text(
+                                text = "Influential: ${article.influentialCitationCount}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                    }
                 }
 
                 if (article.aiSummary.isNotBlank()) {
@@ -512,3 +637,12 @@ private fun ArticleDetailDialog(
     )
 }
 
+private fun formatStageName(stage: PipelineStage): String = when (stage) {
+    PipelineStage.FETCHING -> "Fetching articles..."
+    PipelineStage.DEDUPLICATING -> "Removing duplicates..."
+    PipelineStage.EMBEDDING -> "Generating embeddings..."
+    PipelineStage.SCORING -> "Scoring relevance..."
+    PipelineStage.ANALYZING -> "Analyzing articles..."
+    PipelineStage.SPARKING -> "Generating insights..."
+    PipelineStage.DIGESTING -> "Creating digest..."
+}
