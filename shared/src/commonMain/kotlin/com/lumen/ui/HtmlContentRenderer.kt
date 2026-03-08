@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.HorizontalDivider
@@ -36,8 +39,12 @@ import coil3.compose.AsyncImage
 /**
  * Renders clean HTML (from Readability4J) as Compose elements.
  * Handles the subset of tags that Readability4J produces:
- * h1-h6, p, a, strong/b, em/i, ul/ol/li, blockquote, pre/code, br, hr, img, figure.
- * Skips script, style, table, svg, math elements.
+ * h1-h6, p, a, strong/b, em/i, ul/ol/li, blockquote, pre/code, br, hr, img, figure, table.
+ *
+ * When HTML contains <math> MathML elements (e.g. arXiv papers), delegates to
+ * a platform WebView with MathJax for proper mathematical typesetting.
+ * SVG elements are rendered as their text content.
+ * Only script and style elements are skipped.
  */
 @Composable
 fun HtmlContentRenderer(
@@ -107,6 +114,66 @@ fun HtmlContentRenderer(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                is HtmlBlock.Table -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(codeBackground.copy(alpha = 0.5f))
+                            .padding(8.dp),
+                    ) {
+                        if (block.caption.isNotBlank()) {
+                            Text(
+                                text = block.caption,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 6.dp),
+                            )
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                        ) {
+                            Column {
+                                if (block.headerRow.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier.height(IntrinsicSize.Min),
+                                    ) {
+                                        block.headerRow.forEach { cell ->
+                                            Text(
+                                                text = cell,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier
+                                                    .width(140.dp)
+                                                    .padding(4.dp),
+                                            )
+                                        }
+                                    }
+                                    HorizontalDivider()
+                                }
+                                block.rows.forEach { row ->
+                                    Row(
+                                        modifier = Modifier.height(IntrinsicSize.Min),
+                                    ) {
+                                        row.forEach { cell ->
+                                            Text(
+                                                text = cell,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier
+                                                    .width(140.dp)
+                                                    .padding(4.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -194,6 +261,7 @@ internal sealed class HtmlBlock {
     data class Heading(val level: Int, val text: String) : HtmlBlock()
     data class Paragraph(val inlineElements: List<InlineElement>) : HtmlBlock()
     data class Image(val src: String, val alt: String, val caption: String = "") : HtmlBlock()
+    data class Table(val caption: String, val headerRow: List<String>, val rows: List<List<String>>) : HtmlBlock()
     data class ListBlock(val ordered: Boolean, val items: List<List<InlineElement>>) : HtmlBlock()
     data class Blockquote(val text: String) : HtmlBlock()
     data class CodeBlock(val code: String) : HtmlBlock()
@@ -211,7 +279,7 @@ internal sealed class InlineElement {
 // --- HTML parsing ---
 
 private val BLOCK_TAG_PATTERN = Regex(
-    """<(h[1-6]|p|div|li|blockquote|pre|hr|ul|ol|figure|figcaption|table|img|script|style|nav|footer|header)[^>]*>""",
+    """<(h[1-6]|p|div|li|blockquote|pre|hr|ul|ol|figure|figcaption|table|img|nav|footer|header|section|article)[^>]*>""",
     RegexOption.IGNORE_CASE,
 )
 
@@ -271,9 +339,52 @@ private val FIGCAPTION_PATTERN = Regex(
     setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
 )
 
-// Tags to skip entirely (no img/figure — those are handled as blocks now)
+// Table parsing
+private val TABLE_PATTERN = Regex(
+    """<table[^>]*>(.*?)</table>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+private val TABLE_ROW_PATTERN = Regex(
+    """<tr[^>]*>(.*?)</tr>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+private val TABLE_HEADER_CELL_PATTERN = Regex(
+    """<th[^>]*>(.*?)</th>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+private val TABLE_DATA_CELL_PATTERN = Regex(
+    """<t[dh][^>]*>(.*?)</t[dh]>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+private val TABLE_CAPTION_PATTERN = Regex(
+    """<caption[^>]*>(.*?)</caption>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+
+// Tags to skip entirely — only non-content elements
 private val SKIP_PATTERN = Regex(
-    """<(script|style|nav|footer|header|table|thead|tbody|tr|td|th|svg|math)[^>]*>.*?</\1>|<(br)[^>]*/?>""",
+    """<(script|style)[^>]*>.*?</\1>|<(br)[^>]*/?>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+
+// Math: prefer alttext (LaTeX) with conversion, fall back to MathML text extraction
+private val MATH_WITH_ALTTEXT_PATTERN = Regex(
+    """<math[^>]*?\balttext\s*=\s*"([^"]*?)"[^>]*>.*?</math>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+private val MATH_PATTERN = Regex(
+    """<math[^>]*>(.*?)</math>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+// MathML <annotation> contains raw LaTeX source — must be removed before stripTags
+private val ANNOTATION_PATTERN = Regex(
+    """<annotation[^>]*>.*?</annotation>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+
+// SVG: extract text content (labels, annotations)
+private val SVG_PATTERN = Regex(
+    """<svg[^>]*>(.*?)</svg>""",
     setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
 )
 
@@ -284,9 +395,23 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
     // Work through the HTML sequentially, matching block-level elements
     var remaining = html.trim()
 
-    // Pre-clean: remove skip-worthy elements
+    // Pre-clean: remove non-content elements (script, style)
     remaining = SKIP_PATTERN.replace(remaining, "")
-
+    // Replace math: prefer alttext (LaTeX source) converted to readable text
+    remaining = MATH_WITH_ALTTEXT_PATTERN.replace(remaining) { match ->
+        latexToText(decodeEntities(match.groupValues[1]))
+    }
+    // Remaining math without alttext: extract Unicode text from MathML
+    remaining = MATH_PATTERN.replace(remaining) { match ->
+        val mathContent = ANNOTATION_PATTERN.replace(match.groupValues[1], "")
+        stripTags(mathContent)
+            .replace(WHITESPACE_COLLAPSE, "")
+            .replace("\u200B", "")
+    }
+    // Replace SVG with extracted text content (collapse whitespace from XML structure)
+    remaining = SVG_PATTERN.replace(remaining) { match ->
+        stripTags(match.groupValues[1]).replace(WHITESPACE_COLLAPSE, " ").trim()
+    }
     // Extract blocks in document order using a position-based approach
     val allMatches = mutableListOf<Triple<IntRange, String, MatchResult>>()
 
@@ -301,6 +426,9 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
     }
     for (match in BLOCKQUOTE_PATTERN.findAll(remaining)) {
         allMatches.add(Triple(match.range, "blockquote", match))
+    }
+    for (match in TABLE_PATTERN.findAll(remaining)) {
+        allMatches.add(Triple(match.range, "table", match))
     }
     for (match in FIGURE_PATTERN.findAll(remaining)) {
         allMatches.add(Triple(match.range, "figure", match))
@@ -344,17 +472,91 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
                     }
                 }
             }
+            "table" -> {
+                val tableHtml = match.groupValues[1]
+                val caption = TABLE_CAPTION_PATTERN.find(tableHtml)?.let {
+                    stripTags(it.groupValues[1]).trim()
+                } ?: ""
+                val tableRows = TABLE_ROW_PATTERN.findAll(tableHtml).toList()
+                val headerRow = mutableListOf<String>()
+                val dataRows = mutableListOf<List<String>>()
+                for (row in tableRows) {
+                    val rowHtml = row.groupValues[1]
+                    val headerCells = TABLE_HEADER_CELL_PATTERN.findAll(rowHtml).toList()
+                    if (headerCells.isNotEmpty() && headerRow.isEmpty()) {
+                        headerRow.addAll(headerCells.map {
+                            decodeEntities(stripTags(it.groupValues[1])).trim()
+                        })
+                    } else {
+                        val cells = TABLE_DATA_CELL_PATTERN.findAll(rowHtml).map {
+                            decodeEntities(stripTags(it.groupValues[1])).trim()
+                        }.toList()
+                        if (cells.isNotEmpty()) {
+                            dataRows.add(cells)
+                        }
+                    }
+                }
+                // Detect equation tables: single row, no header, mostly empty cells
+                // (arXiv wraps display equations in <table> with padding cells)
+                if (headerRow.isEmpty() && dataRows.size == 1) {
+                    val cells = dataRows[0]
+                    val nonEmpty = cells.filter { it.isNotBlank() }
+                    if (nonEmpty.size <= 2 && cells.size >= 3 &&
+                        cells.count { it.isBlank() } >= cells.size / 2
+                    ) {
+                        val text = nonEmpty.joinToString("  ")
+                        if (text.isNotBlank()) {
+                            blocks.add(HtmlBlock.Paragraph(listOf(InlineElement.Text(text))))
+                        }
+                        continue
+                    }
+                }
+                if (headerRow.isNotEmpty() || dataRows.isNotEmpty()) {
+                    blocks.add(HtmlBlock.Table(caption, headerRow, dataRows))
+                }
+            }
             "figure" -> {
                 val figureHtml = match.groupValues[1]
+                val figCaption = FIGCAPTION_PATTERN.find(figureHtml)?.let {
+                    stripTags(it.groupValues[1]).trim()
+                } ?: ""
+
+                // Check for table inside figure (arXiv wraps tables in <figure>)
+                val tableMatch = TABLE_PATTERN.find(figureHtml)
                 val imgMatch = IMG_PATTERN.find(figureHtml)
-                if (imgMatch != null) {
+
+                if (tableMatch != null) {
+                    val tableHtml = tableMatch.groupValues[1]
+                    val tableCaption = TABLE_CAPTION_PATTERN.find(tableHtml)?.let {
+                        stripTags(it.groupValues[1]).trim()
+                    } ?: figCaption
+                    val tableRows = TABLE_ROW_PATTERN.findAll(tableHtml).toList()
+                    val headerRow = mutableListOf<String>()
+                    val dataRows = mutableListOf<List<String>>()
+                    for (row in tableRows) {
+                        val rowHtml = row.groupValues[1]
+                        val headerCells = TABLE_HEADER_CELL_PATTERN.findAll(rowHtml).toList()
+                        if (headerCells.isNotEmpty() && headerRow.isEmpty()) {
+                            headerRow.addAll(headerCells.map {
+                                decodeEntities(stripTags(it.groupValues[1])).trim()
+                            })
+                        } else {
+                            val cells = TABLE_DATA_CELL_PATTERN.findAll(rowHtml).map {
+                                decodeEntities(stripTags(it.groupValues[1])).trim()
+                            }.toList()
+                            if (cells.isNotEmpty()) {
+                                dataRows.add(cells)
+                            }
+                        }
+                    }
+                    if (headerRow.isNotEmpty() || dataRows.isNotEmpty()) {
+                        blocks.add(HtmlBlock.Table(tableCaption, headerRow, dataRows))
+                    }
+                } else if (imgMatch != null) {
                     val src = IMG_SRC_PATTERN.find(imgMatch.value)?.groupValues?.get(1) ?: ""
                     val alt = IMG_ALT_PATTERN.find(imgMatch.value)?.groupValues?.get(1) ?: ""
-                    val caption = FIGCAPTION_PATTERN.find(figureHtml)?.let {
-                        stripTags(it.groupValues[1]).trim()
-                    } ?: ""
                     if (src.isNotBlank()) {
-                        blocks.add(HtmlBlock.Image(src, alt, caption))
+                        blocks.add(HtmlBlock.Image(src, alt, figCaption))
                     }
                 }
             }
@@ -417,9 +619,9 @@ internal fun parseInlineElements(html: String): List<InlineElement> {
     var lastEnd = 0
 
     for (match in INLINE_PATTERN.findAll(html)) {
-        // Text before this tag
+        // Text before this tag — collapse whitespace (HTML rendering rule)
         if (match.range.first > lastEnd) {
-            val before = decodeEntities(stripTags(html.substring(lastEnd, match.range.first)))
+            val before = collapseWhitespace(decodeEntities(stripTags(html.substring(lastEnd, match.range.first))))
             if (before.isNotBlank()) {
                 elements.add(InlineElement.Text(before))
             }
@@ -427,7 +629,7 @@ internal fun parseInlineElements(html: String): List<InlineElement> {
 
         val tag = match.groupValues[1].lowercase()
         val attrs = match.groupValues[2]
-        val content = decodeEntities(stripTags(match.groupValues[3]))
+        val content = collapseWhitespace(decodeEntities(stripTags(match.groupValues[3])))
 
         when (tag) {
             "strong", "b" -> elements.add(InlineElement.Bold(content))
@@ -447,7 +649,7 @@ internal fun parseInlineElements(html: String): List<InlineElement> {
 
     // Remaining text after last tag
     if (lastEnd < html.length) {
-        val after = decodeEntities(stripTags(html.substring(lastEnd)))
+        val after = collapseWhitespace(decodeEntities(stripTags(html.substring(lastEnd))))
         if (after.isNotBlank()) {
             elements.add(InlineElement.Text(after))
         }
@@ -455,7 +657,7 @@ internal fun parseInlineElements(html: String): List<InlineElement> {
 
     // If nothing was parsed, treat whole input as plain text
     if (elements.isEmpty()) {
-        val text = decodeEntities(stripTags(html))
+        val text = collapseWhitespace(decodeEntities(stripTags(html)))
         if (text.isNotBlank()) {
             elements.add(InlineElement.Text(text))
         }
@@ -498,6 +700,74 @@ private fun buildStyledText(
 
 // --- Utility ---
 
+private val WHITESPACE_COLLAPSE = Regex("""\s+""")
+
+private fun collapseWhitespace(text: String): String {
+    return text.replace(WHITESPACE_COLLAPSE, " ")
+}
+
+private val LATEX_COMMANDS = mapOf(
+    "\\pi" to "π", "\\Pi" to "Π",
+    "\\alpha" to "α", "\\beta" to "β", "\\gamma" to "γ", "\\Gamma" to "Γ",
+    "\\delta" to "δ", "\\Delta" to "Δ", "\\epsilon" to "ε", "\\varepsilon" to "ε",
+    "\\zeta" to "ζ", "\\eta" to "η", "\\theta" to "θ", "\\Theta" to "Θ",
+    "\\lambda" to "λ", "\\Lambda" to "Λ", "\\mu" to "μ", "\\nu" to "ν",
+    "\\xi" to "ξ", "\\Xi" to "Ξ", "\\rho" to "ρ", "\\sigma" to "σ", "\\Sigma" to "Σ",
+    "\\tau" to "τ", "\\phi" to "φ", "\\Phi" to "Φ", "\\chi" to "χ",
+    "\\psi" to "ψ", "\\Psi" to "Ψ", "\\omega" to "ω", "\\Omega" to "Ω",
+    "\\times" to "×", "\\sim" to "~", "\\approx" to "≈",
+    "\\pm" to "±", "\\mp" to "∓", "\\cdot" to "·", "\\circ" to "°",
+    "\\leq" to "≤", "\\geq" to "≥", "\\neq" to "≠", "\\equiv" to "≡",
+    "\\ll" to "≪", "\\gg" to "≫",
+    "\\infty" to "∞", "\\ell" to "ℓ", "\\partial" to "∂", "\\nabla" to "∇",
+    "\\forall" to "∀", "\\exists" to "∃", "\\in" to "∈", "\\notin" to "∉",
+    "\\subset" to "⊂", "\\supset" to "⊃", "\\cup" to "∪", "\\cap" to "∩",
+    "\\sum" to "Σ", "\\prod" to "Π", "\\int" to "∫",
+    "\\rightarrow" to "→", "\\leftarrow" to "←", "\\Rightarrow" to "⇒",
+    "\\langle" to "⟨", "\\rangle" to "⟩",
+    "\\ldots" to "…", "\\dots" to "…", "\\cdots" to "···",
+    "\\mathdollar" to "$",
+    "\\left" to "", "\\right" to "", "\\big" to "", "\\Big" to "",
+    "\\," to "", "\\;" to " ", "\\!" to "", "\\quad" to " ", "\\qquad" to "  ",
+)
+
+// Patterns for LaTeX commands with braced arguments
+private val LATEX_BRACE_CMD = Regex("""\\(?:mathbb|mathbf|mathcal|mathrm|mathit|mathsf|text|textit|textbf|boldsymbol|operatorname)\{([^}]*)}""")
+private val LATEX_FRAC = Regex("""\\frac\{([^}]*?)}\{([^}]*?)}""")
+private val LATEX_SQRT = Regex("""\\sqrt\{([^}]*?)}""")
+private val LATEX_UNKNOWN_CMD = Regex("""\\[a-zA-Z]+""")
+
+private fun latexToText(latex: String): String {
+    var result = latex
+
+    // Replace \frac{a}{b} → a/b
+    result = LATEX_FRAC.replace(result) { "${it.groupValues[1]}/${it.groupValues[2]}" }
+
+    // Replace \sqrt{x} → √x
+    result = LATEX_SQRT.replace(result) { "√${it.groupValues[1]}" }
+
+    // Replace \mathbb{E}, \mathbf{s}, \text{...}, etc. → just the content
+    result = LATEX_BRACE_CMD.replace(result) { it.groupValues[1] }
+
+    // Replace known commands (sorted by length descending to match longer first)
+    for ((cmd, replacement) in LATEX_COMMANDS.entries.sortedByDescending { it.key.length }) {
+        result = result.replace(cmd, replacement)
+    }
+
+    // Remove remaining unknown commands
+    result = LATEX_UNKNOWN_CMD.replace(result, "")
+
+    // Remove grouping braces
+    result = result.replace("{", "").replace("}", "")
+
+    // Clean up: ^° → ° (degree symbol is not a superscript in text)
+    result = result.replace("^°", "°")
+
+    // Clean up whitespace
+    result = result.replace(WHITESPACE_COLLAPSE, " ").trim()
+
+    return result
+}
 private val HTML_TAG_REGEX = Regex("<[^>]*>")
 private val HTML_ENTITY_MAP = mapOf(
     "&amp;" to "&", "&lt;" to "<", "&gt;" to ">",

@@ -19,6 +19,7 @@ pdfbox = "3.0.4"
 pdfbox-android = "2.0.27.0"
 markdown-renderer = "0.28.0"
 coil = "3.1.0"
+javafx = "21.0.5"
 
 [libraries]
 # Koog AI Agent
@@ -88,6 +89,11 @@ coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.r
 
 # Readability4J (web page content extraction)
 readability4j = { module = "net.dankito.readability4j:readability4j", version.ref = "readability4j" }
+
+# JavaFX WebView (math rendering on Desktop)
+javafx-web = { module = "org.openjfx:javafx-web", version.ref = "javafx" }
+javafx-swing = { module = "org.openjfx:javafx-swing", version.ref = "javafx" }
+javafx-graphics = { module = "org.openjfx:javafx-graphics", version.ref = "javafx" }
 
 # Logging
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }

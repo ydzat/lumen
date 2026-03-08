@@ -75,6 +75,20 @@ kotlin {
                 implementation(libs.ktor.client.cio)
                 implementation(libs.pdfbox)
                 implementation(libs.readability4j)
+                // JavaFX WebView for math rendering (MathJax)
+                val fxClassifier = when {
+                    org.gradle.internal.os.OperatingSystem.current().isLinux -> "linux"
+                    org.gradle.internal.os.OperatingSystem.current().isWindows -> "win"
+                    org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "mac"
+                    else -> "linux"
+                }
+                val fxVersion = libs.versions.javafx.get()
+                implementation("org.openjfx:javafx-base:$fxVersion:$fxClassifier")
+                implementation("org.openjfx:javafx-graphics:$fxVersion:$fxClassifier")
+                implementation("org.openjfx:javafx-controls:$fxVersion:$fxClassifier")
+                implementation("org.openjfx:javafx-media:$fxVersion:$fxClassifier")
+                implementation("org.openjfx:javafx-web:$fxVersion:$fxClassifier")
+                implementation("org.openjfx:javafx-swing:$fxVersion:$fxClassifier")
             }
         }
 
