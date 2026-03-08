@@ -18,6 +18,7 @@ androidx-work = "2.10.0"
 pdfbox = "3.0.4"
 pdfbox-android = "2.0.27.0"
 markdown-renderer = "0.28.0"
+coil = "3.1.0"
 
 [libraries]
 # Koog AI Agent
@@ -80,6 +81,10 @@ markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-
 
 # RSS Parser (KMP)
 rssparser = { module = "com.prof18.rssparser:rssparser", version.ref = "rssparser" }
+
+# Coil (KMP image loading for Compose)
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 
 # Readability4J (web page content extraction)
 readability4j = { module = "net.dankito.readability4j:readability4j", version.ref = "readability4j" }

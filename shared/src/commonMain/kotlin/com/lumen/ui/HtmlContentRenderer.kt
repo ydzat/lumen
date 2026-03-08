@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,9 +16,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -27,12 +31,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 
 /**
  * Renders clean HTML (from Readability4J) as Compose elements.
  * Handles the subset of tags that Readability4J produces:
- * h1-h6, p, a, strong/b, em/i, ul/ol/li, blockquote, pre/code, br, hr.
- * Skips img, figure, script, style, table elements.
+ * h1-h6, p, a, strong/b, em/i, ul/ol/li, blockquote, pre/code, br, hr, img, figure.
+ * Skips script, style, table, svg, math elements.
  */
 @Composable
 fun HtmlContentRenderer(
@@ -74,11 +79,37 @@ fun HtmlContentRenderer(
                             ),
                             onClick = { offset ->
                                 annotated.getStringAnnotations("URL", offset, offset)
-                                    .firstOrNull()?.let { uriHandler.openUri(it.item) }
+                                    .firstOrNull()?.let { safeOpenUri(uriHandler, it.item) }
                             },
                         )
                         Spacer(Modifier.height(8.dp))
                     }
+                }
+
+                is HtmlBlock.Image -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        AsyncImage(
+                            model = block.src,
+                            contentDescription = block.alt,
+                            contentScale = ContentScale.FillWidth,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 400.dp)
+                                .clip(RoundedCornerShape(6.dp)),
+                        )
+                        if (block.caption.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = block.caption,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                 }
 
                 is HtmlBlock.ListBlock -> {
@@ -99,7 +130,7 @@ fun HtmlContentRenderer(
                                     ),
                                     onClick = { offset ->
                                         annotated.getStringAnnotations("URL", offset, offset)
-                                            .firstOrNull()?.let { uriHandler.openUri(it.item) }
+                                            .firstOrNull()?.let { safeOpenUri(uriHandler, it.item) }
                                     },
                                     modifier = Modifier.weight(1f),
                                 )
@@ -162,6 +193,7 @@ fun HtmlContentRenderer(
 internal sealed class HtmlBlock {
     data class Heading(val level: Int, val text: String) : HtmlBlock()
     data class Paragraph(val inlineElements: List<InlineElement>) : HtmlBlock()
+    data class Image(val src: String, val alt: String, val caption: String = "") : HtmlBlock()
     data class ListBlock(val ordered: Boolean, val items: List<List<InlineElement>>) : HtmlBlock()
     data class Blockquote(val text: String) : HtmlBlock()
     data class CodeBlock(val code: String) : HtmlBlock()
@@ -220,9 +252,28 @@ private val DIV_PATTERN = Regex(
     setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
 )
 
-// Tags to skip entirely
+// Figure with optional caption: <figure><img ...><figcaption>...</figcaption></figure>
+private val FIGURE_PATTERN = Regex(
+    """<figure[^>]*>(.*?)</figure>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+
+// Standalone <img> tags (self-closing or not)
+private val IMG_PATTERN = Regex(
+    """<img\s[^>]*>""",
+    RegexOption.IGNORE_CASE,
+)
+
+private val IMG_SRC_PATTERN = Regex("""src\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+private val IMG_ALT_PATTERN = Regex("""alt\s*=\s*["']([^"']*?)["']""", RegexOption.IGNORE_CASE)
+private val FIGCAPTION_PATTERN = Regex(
+    """<figcaption[^>]*>(.*?)</figcaption>""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+
+// Tags to skip entirely (no img/figure — those are handled as blocks now)
 private val SKIP_PATTERN = Regex(
-    """<(figure|figcaption|img|script|style|nav|footer|header|table|thead|tbody|tr|td|th|svg|math)[^>]*>.*?</\1>|<(img|br|hr)[^>]*/?>""",
+    """<(script|style|nav|footer|header|table|thead|tbody|tr|td|th|svg|math)[^>]*>.*?</\1>|<(br)[^>]*/?>""",
     setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
 )
 
@@ -251,8 +302,14 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
     for (match in BLOCKQUOTE_PATTERN.findAll(remaining)) {
         allMatches.add(Triple(match.range, "blockquote", match))
     }
+    for (match in FIGURE_PATTERN.findAll(remaining)) {
+        allMatches.add(Triple(match.range, "figure", match))
+    }
     for (match in PARAGRAPH_PATTERN.findAll(remaining)) {
         allMatches.add(Triple(match.range, "paragraph", match))
+    }
+    for (match in IMG_PATTERN.findAll(remaining)) {
+        allMatches.add(Triple(match.range, "img", match))
     }
     for (match in HR_PATTERN.findAll(remaining)) {
         allMatches.add(Triple(match.range, "hr", match))
@@ -285,6 +342,27 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
                     if (inlines.any { it is InlineElement.Text && it.text.isNotBlank() || it !is InlineElement.Text }) {
                         blocks.add(HtmlBlock.Paragraph(inlines))
                     }
+                }
+            }
+            "figure" -> {
+                val figureHtml = match.groupValues[1]
+                val imgMatch = IMG_PATTERN.find(figureHtml)
+                if (imgMatch != null) {
+                    val src = IMG_SRC_PATTERN.find(imgMatch.value)?.groupValues?.get(1) ?: ""
+                    val alt = IMG_ALT_PATTERN.find(imgMatch.value)?.groupValues?.get(1) ?: ""
+                    val caption = FIGCAPTION_PATTERN.find(figureHtml)?.let {
+                        stripTags(it.groupValues[1]).trim()
+                    } ?: ""
+                    if (src.isNotBlank()) {
+                        blocks.add(HtmlBlock.Image(src, alt, caption))
+                    }
+                }
+            }
+            "img" -> {
+                val src = IMG_SRC_PATTERN.find(match.value)?.groupValues?.get(1) ?: ""
+                val alt = IMG_ALT_PATTERN.find(match.value)?.groupValues?.get(1) ?: ""
+                if (src.isNotBlank()) {
+                    blocks.add(HtmlBlock.Image(src, alt))
                 }
             }
             "list" -> {
@@ -328,7 +406,7 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
 // --- Inline element parsing ---
 
 private val INLINE_PATTERN = Regex(
-    """<(strong|b|em|i|code|a)([^>]*)>(.*?)</\1>""",
+    """<(strong|b|em|i|code|a|span)([^>]*)>(.*?)</\1>""",
     setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
 )
 
@@ -358,6 +436,9 @@ internal fun parseInlineElements(html: String): List<InlineElement> {
             "a" -> {
                 val href = HREF_PATTERN.find(attrs)?.groupValues?.get(1) ?: ""
                 elements.add(InlineElement.Link(content, href))
+            }
+            "span" -> {
+                if (content.isNotBlank()) elements.add(InlineElement.Text(content))
             }
         }
 
@@ -429,6 +510,15 @@ private val HTML_ENTITY_MAP = mapOf(
 )
 private val HTML_NUMERIC_ENTITY = Regex("&#(\\d+);")
 private val HTML_HEX_ENTITY = Regex("&#x([0-9a-fA-F]+);")
+
+private fun safeOpenUri(uriHandler: UriHandler, uri: String) {
+    if (uri.isBlank() || uri.startsWith("#")) return
+    try {
+        uriHandler.openUri(uri)
+    } catch (_: Exception) {
+        // Ignore malformed or unsupported URIs
+    }
+}
 
 internal fun stripTags(html: String): String {
     return HTML_TAG_REGEX.replace(html, "")

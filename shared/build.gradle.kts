@@ -47,6 +47,8 @@ kotlin {
             implementation(libs.koog.agents)
             implementation(libs.rssparser)
             implementation(libs.markdown.renderer.m3)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
             api(project(":shared-db"))
         }
 

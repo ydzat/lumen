@@ -5,6 +5,7 @@ import com.lumen.core.database.entities.ArticleSection
 import com.lumen.core.database.entities.ArticleSection_
 import com.lumen.core.util.extractJsonObject
 import com.lumen.core.memory.LlmCall
+import com.lumen.ui.stripHtml
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -240,7 +241,7 @@ class DeepAnalysisService(
                     val match = matches[i]
                     val level = match.groupValues[1].length.takeIf { it > 0 }
                         ?: match.groupValues[3].toIntOrNull() ?: 1
-                    val heading = match.groupValues[2].ifBlank { match.groupValues[4] }.trim()
+                    val heading = stripHtml(match.groupValues[2].ifBlank { match.groupValues[4] }).trim()
                     val start = match.range.last + 1
                     val end = if (i + 1 < matches.size) matches[i + 1].range.first else content.length
                     val sectionContent = content.substring(start, end).trim()
