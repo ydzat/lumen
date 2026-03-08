@@ -25,6 +25,7 @@ import com.lumen.research.collector.ArxivApiDataSource
 import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.DataSource
 import com.lumen.research.collector.Deduplicator
+import com.lumen.research.collector.GitHubReleasesDataSource
 import com.lumen.research.collector.RssDataSource
 import com.lumen.research.collector.ScholarDataSource
 import com.lumen.research.collector.SourceManager
@@ -105,7 +106,19 @@ val researchModule = module {
             },
         )
     }
-    single<List<DataSource>> { listOf(get<RssDataSource>(), get<ArxivApiDataSource>(), get<ScholarDataSource>()) }
+    single {
+        GitHubReleasesDataSource(
+            db = get(),
+            httpClient = HttpClient {
+                install(HttpTimeout) {
+                    connectTimeoutMillis = 30_000
+                    requestTimeoutMillis = 60_000
+                    socketTimeoutMillis = 60_000
+                }
+            },
+        )
+    }
+    single<List<DataSource>> { listOf(get<RssDataSource>(), get<ArxivApiDataSource>(), get<ScholarDataSource>(), get<GitHubReleasesDataSource>()) }
     single {
         CollectorManager(
             articleAnalyzer = get(),
