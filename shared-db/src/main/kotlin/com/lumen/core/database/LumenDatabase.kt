@@ -4,6 +4,7 @@ import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.Conversation
 import com.lumen.core.database.entities.Digest
 import com.lumen.core.database.entities.Document
+import com.lumen.core.database.entities.ArticleSection
 import com.lumen.core.database.entities.DocumentChunk
 import com.lumen.core.database.entities.MemoryEntry
 import com.lumen.core.database.entities.Message
@@ -34,6 +35,8 @@ class LumenDatabase(val store: BoxStore) {
     val documentBox: Box<Document> get() = store.boxFor(Document::class.java)
 
     val documentChunkBox: Box<DocumentChunk> get() = store.boxFor(DocumentChunk::class.java)
+
+    val articleSectionBox: Box<ArticleSection> get() = store.boxFor(ArticleSection::class.java)
 
     fun close() {
         if (!store.isClosed) {
