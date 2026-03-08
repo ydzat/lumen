@@ -21,6 +21,34 @@ class DigestFormatter {
             sb.appendLine()
         }
 
+        val sections = parseProjectSections(digest.projectSections)
+        if (sections.isNotEmpty()) {
+            sb.appendLine("## Project Sections")
+            sb.appendLine()
+            for (section in sections) {
+                val articleLabel = if (section.articleCount == 1) "article" else "articles"
+                sb.appendLine("### ${section.projectName} (${section.articleCount} $articleLabel)")
+                sb.appendLine()
+                if (section.highlights.isNotBlank()) {
+                    sb.appendLine(section.highlights)
+                    sb.appendLine()
+                }
+            }
+        }
+
+        val sparks = parseSparkSections(digest.sparks)
+        if (sparks.isNotEmpty()) {
+            sb.appendLine("## Spark Insights")
+            sb.appendLine()
+            for (spark in sparks) {
+                val keywords = if (spark.relatedKeywords.isNotEmpty()) {
+                    " [${spark.relatedKeywords.joinToString(", ")}]"
+                } else ""
+                sb.appendLine("- **${spark.title}**: ${spark.description}$keywords")
+            }
+            sb.appendLine()
+        }
+
         val breakdown = parseSourceBreakdown(digest.sourceBreakdown)
         if (breakdown.isNotEmpty()) {
             sb.appendLine("## Source Breakdown")
@@ -51,6 +79,24 @@ class DigestFormatter {
         if (raw.isBlank()) return emptyList()
         return try {
             json.decodeFromString<List<DigestGenerator.SourceBreakdownEntry>>(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun parseProjectSections(raw: String): List<DigestGenerator.ProjectSection> {
+        if (raw.isBlank()) return emptyList()
+        return try {
+            json.decodeFromString<List<DigestGenerator.ProjectSection>>(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun parseSparkSections(raw: String): List<DigestGenerator.SparkSection> {
+        if (raw.isBlank()) return emptyList()
+        return try {
+            json.decodeFromString<List<DigestGenerator.SparkSection>>(raw)
         } catch (_: Exception) {
             emptyList()
         }
