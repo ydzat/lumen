@@ -12,6 +12,7 @@ import io.objectbox.query.QueryBuilder.StringOrder
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.net.URLEncoder
 import java.time.LocalDate
 import java.time.ZoneOffset
 
@@ -35,6 +36,7 @@ class ScholarDataSource(
 
         val existingUrls = queryExistingUrls()
         val existingDois = queryExistingDois()
+        val existingArxivIds = queryExistingArxivIds()
 
         for ((index, source) in sources.withIndex()) {
             if (remainingBudget <= 0) break
@@ -59,7 +61,9 @@ class ScholarDataSource(
 
                 val newArticles = searchResponse.data
                     .mapNotNull { paper -> mapToArticle(paper) }
-                    .filter { it.url !in existingUrls && (it.doi.isBlank() || it.doi !in existingDois) }
+                    .filter { it.url !in existingUrls }
+                    .filter { it.doi.isBlank() || it.doi !in existingDois }
+                    .filter { it.arxivId.isBlank() || it.arxivId !in existingArxivIds }
                     .take(remainingBudget)
                     .map { it.copy(sourceId = source.id, fetchedAt = now) }
 
@@ -68,6 +72,7 @@ class ScholarDataSource(
                     newArticles.forEach { article ->
                         existingUrls.add(article.url)
                         if (article.doi.isNotBlank()) existingDois.add(article.doi)
+                        if (article.arxivId.isNotBlank()) existingArxivIds.add(article.arxivId)
                     }
                 }
                 db.sourceBox.put(source.copy(lastFetchedAt = now))
@@ -83,7 +88,7 @@ class ScholarDataSource(
     }
 
     internal fun buildSearchUrl(query: String, limit: Int): String {
-        val encodedQuery = query.replace(" ", "+")
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
         return "$BASE_URL?query=$encodedQuery&offset=0&limit=$limit&fields=$FIELDS"
     }
 
@@ -127,11 +132,19 @@ class ScholarDataSource(
             .mapTo(mutableSetOf()) { it.doi }
     }
 
+    private fun queryExistingArxivIds(): MutableSet<String> {
+        return db.articleBox.query()
+            .notEqual(Article_.arxivId, "", StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+            .mapTo(mutableSetOf()) { it.arxivId }
+    }
+
     companion object {
-        const val BASE_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
-        const val RATE_LIMIT_MS = 3000L
-        const val MAX_RESULTS_DEFAULT = 50
-        const val API_MAX_LIMIT = 100
+        internal const val BASE_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
+        internal const val RATE_LIMIT_MS = 3000L
+        internal const val MAX_RESULTS_DEFAULT = 50
+        private const val API_MAX_LIMIT = 100
 
         private const val FIELDS = "title,abstract,authors,url,year,publicationDate,citationCount,influentialCitationCount,externalIds"
 

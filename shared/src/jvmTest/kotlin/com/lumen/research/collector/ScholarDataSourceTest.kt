@@ -252,6 +252,18 @@ class ScholarDataSourceTest {
     }
 
     @Test
+    fun fetch_skipsDuplicateArxivIds() = kotlinx.coroutines.runBlocking {
+        db.articleBox.put(Article(title = "Existing", url = "https://other.com", arxivId = "1706.03762"))
+        val ds = createDataSource(SAMPLE_RESPONSE)
+        val source = Source(name = "Scholar", url = "", type = "SEMANTIC_SCHOLAR")
+        db.sourceBox.put(source)
+
+        val result = ds.fetch(listOf(db.sourceBox.all.first()), createContext())
+
+        assertTrue(result.articles.isEmpty())
+    }
+
+    @Test
     fun fetch_respectsBudget() = kotlinx.coroutines.runBlocking {
         val ds = createDataSource(MULTI_PAPER_RESPONSE)
         val source = Source(name = "Scholar", url = "", type = "SEMANTIC_SCHOLAR")
