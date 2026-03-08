@@ -22,6 +22,7 @@ import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
 import com.lumen.research.collector.CollectorManager
+import com.lumen.research.collector.ArxivApiDataSource
 import com.lumen.research.collector.DataSource
 import com.lumen.research.collector.Deduplicator
 import com.lumen.research.collector.RssCollector
@@ -79,7 +80,19 @@ val researchModule = module {
     single { DigestGenerator(get(), get(), getOrNull()) }
     single { DigestFormatter() }
     single { Deduplicator(get()) }
-    single<List<DataSource>> { emptyList() }
+    single {
+        ArxivApiDataSource(
+            db = get(),
+            httpClient = HttpClient {
+                install(HttpTimeout) {
+                    connectTimeoutMillis = 30_000
+                    requestTimeoutMillis = 60_000
+                    socketTimeoutMillis = 60_000
+                }
+            },
+        )
+    }
+    single<List<DataSource>> { listOf(get<ArxivApiDataSource>()) }
     single {
         CollectorManager(
             rssCollector = get(),
