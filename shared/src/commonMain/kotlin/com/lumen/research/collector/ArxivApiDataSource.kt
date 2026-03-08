@@ -28,6 +28,7 @@ class ArxivApiDataSource(
     override suspend fun fetch(sources: List<Source>, context: FetchContext): DataFetchResult {
         val allArticles = mutableListOf<Article>()
         val errors = mutableListOf<String>()
+        val failedIds = mutableSetOf<Long>()
         var remainingBudget = context.remainingBudget
         val existingArxivIds = queryExistingArxivIds()
 
@@ -40,6 +41,7 @@ class ArxivApiDataSource(
                 val response = httpClient.get(url)
                 if (!response.status.isSuccess()) {
                     errors.add("arXiv API error for ${source.name}: HTTP ${response.status.value}")
+                    failedIds.add(source.id)
                     continue
                 }
 
@@ -61,10 +63,11 @@ class ArxivApiDataSource(
                 remainingBudget -= newArticles.size
             } catch (e: Exception) {
                 errors.add("arXiv ${source.name}: ${e.message ?: e::class.simpleName}")
+                failedIds.add(source.id)
             }
         }
 
-        return DataFetchResult(allArticles, errors, SourceType.ARXIV_API)
+        return DataFetchResult(allArticles, errors, SourceType.ARXIV_API, failedIds)
     }
 
     internal fun buildQueryUrl(source: Source, context: FetchContext, maxResults: Int): String {

@@ -60,6 +60,7 @@ import com.lumen.core.database.entities.ArticleSection
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.analyzer.DeepAnalysisService
 import com.lumen.ui.displaySourceType
+import com.lumen.ui.HtmlContentRenderer
 import com.lumen.ui.stripHtml
 import kotlinx.coroutines.launch
 
@@ -335,11 +336,46 @@ private fun ContentSectionCard(
 
         Spacer(Modifier.height(4.dp))
 
-        // Section content — displayed inline
-        Text(
-            text = stripHtml(localSection.content),
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        // Section content — rendered as HTML if it contains tags, plain text otherwise
+        if (localSection.content.contains('<')) {
+            HtmlContentRenderer(
+                html = localSection.content,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            Text(
+                text = localSection.content,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+
+        // AI Translation (if translated) — shown right below original text
+        if (dbSection?.aiTranslation?.isNotBlank() == true) {
+            Spacer(Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                    .padding(10.dp),
+            ) {
+                Column {
+                    Text(
+                        text = "Translation",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = dbSection.aiTranslation,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
 
         // AI Commentary (if analyzed)
         if (dbSection?.aiCommentary?.isNotBlank() == true) {
@@ -362,34 +398,6 @@ private fun ContentSectionCard(
                     Text(
                         text = dbSection.aiCommentary,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-        }
-
-        // AI Translation (if translated)
-        if (dbSection?.aiTranslation?.isNotBlank() == true) {
-            Spacer(Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
-                    .padding(10.dp),
-            ) {
-                Column {
-                    Text(
-                        text = "Translation",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = dbSection.aiTranslation,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }

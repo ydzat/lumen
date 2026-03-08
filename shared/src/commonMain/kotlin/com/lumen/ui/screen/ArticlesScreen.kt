@@ -81,6 +81,12 @@ private enum class SortMode(val label: String) {
     RELEVANCE("Relevance"),
 }
 
+private enum class AnalysisFilterMode(val label: String) {
+    ALL("All"),
+    ANALYZED("Analyzed"),
+    UNANALYZED("Unanalyzed"),
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticlesScreen() {
@@ -102,6 +108,8 @@ fun ArticlesScreen() {
     var sortMode by remember { mutableStateOf(SortMode.DATE) }
     var filterStarred by remember { mutableStateOf(false) }
     var showArchived by remember { mutableStateOf(false) }
+    var filterSourceId by remember { mutableStateOf(0L) } // 0 = all sources
+    var filterAnalysisStatus by remember { mutableStateOf(AnalysisFilterMode.ALL) }
     var isRefreshing by remember { mutableStateOf(false) }
     var progressStage by remember { mutableStateOf("") }
     var progressDetail by remember { mutableStateOf("") }
@@ -133,6 +141,14 @@ fun ArticlesScreen() {
                 activeProjectId == 0L ||
                     activeProjectId.toString() in parseCsvSet(it.projectIds)
             }
+            .filter { filterSourceId == 0L || it.sourceId == filterSourceId }
+            .filter {
+                when (filterAnalysisStatus) {
+                    AnalysisFilterMode.ALL -> true
+                    AnalysisFilterMode.ANALYZED -> it.analysisStatus == AnalysisStatus.ANALYZED
+                    AnalysisFilterMode.UNANALYZED -> it.analysisStatus != AnalysisStatus.ANALYZED
+                }
+            }
 
         articles = when (sortMode) {
             SortMode.DATE -> filtered.sortedByDescending { it.fetchedAt }
@@ -140,7 +156,7 @@ fun ArticlesScreen() {
         }
     }
 
-    LaunchedEffect(sortMode, filterStarred, showArchived, activeProjectId) {
+    LaunchedEffect(sortMode, filterStarred, showArchived, activeProjectId, filterSourceId, filterAnalysisStatus) {
         loadData()
     }
 
@@ -329,6 +345,96 @@ fun ArticlesScreen() {
                 }
             }
 
+            // Source + analysis status filters
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Source filter
+                var sourceExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = sourceExpanded,
+                    onExpandedChange = { sourceExpanded = it },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    OutlinedTextField(
+                        value = if (filterSourceId == 0L) "All Sources"
+                        else sourceNames[filterSourceId] ?: "Unknown",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Source") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        singleLine = true,
+                    )
+                    ExposedDropdownMenu(
+                        expanded = sourceExpanded,
+                        onDismissRequest = { sourceExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("All Sources") },
+                            onClick = {
+                                filterSourceId = 0L
+                                sourceExpanded = false
+                            },
+                        )
+                        val sortedSources = remember(sourceNames) {
+                            sourceNames.entries.sortedBy { it.value }
+                        }
+                        sortedSources.forEach { (id, name) ->
+                            DropdownMenuItem(
+                                text = { Text(name) },
+                                onClick = {
+                                    filterSourceId = id
+                                    sourceExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                // Analysis status filter
+                var analysisExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = analysisExpanded,
+                    onExpandedChange = { analysisExpanded = it },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    OutlinedTextField(
+                        value = filterAnalysisStatus.label,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Status") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = analysisExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        singleLine = true,
+                    )
+                    ExposedDropdownMenu(
+                        expanded = analysisExpanded,
+                        onDismissRequest = { analysisExpanded = false },
+                    ) {
+                        AnalysisFilterMode.entries.forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(mode.label) },
+                                onClick = {
+                                    filterAnalysisStatus = mode
+                                    analysisExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
             // Pipeline progress banner
             if (isRefreshing && progressStage.isNotBlank()) {
                 Row(
@@ -500,11 +606,18 @@ fun ArticlesScreen() {
     LaunchedEffect(detailArticle?.id) {
         detailArticle?.let { art ->
             articleSections = deepAnalysisService.getSections(art.id)
-            val rawContent = art.content.ifBlank { art.summary }
-            localSections = if (rawContent.isNotBlank()) {
-                deepAnalysisService.splitIntoSections(rawContent)
+            // Prefer DB sections (from AI structuring) over local parsing
+            localSections = if (articleSections.isNotEmpty()) {
+                articleSections.map {
+                    DeepAnalysisService.LocalSection(it.heading, it.content, it.level)
+                }
             } else {
-                emptyList()
+                val rawContent = art.content.ifBlank { art.summary }
+                if (rawContent.isNotBlank()) {
+                    deepAnalysisService.splitIntoSections(rawContent)
+                } else {
+                    emptyList()
+                }
             }
         } ?: run {
             articleSections = emptyList()

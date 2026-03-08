@@ -3,13 +3,19 @@ package com.lumen.research.collector
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.Article_
+import com.lumen.core.database.entities.ArticleSection
+import com.lumen.core.database.entities.ArticleSection_
+import com.lumen.research.analyzer.DeepAnalysisService
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
-import io.objectbox.query.QueryBuilder.StringOrder
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import net.dankito.readability4j.Readability4J
 
 class ContentEnricher(
@@ -19,25 +25,39 @@ class ContentEnricher(
 
     suspend fun enrichAll(articles: List<Article>): Int {
         val toEnrich = articles.filter { needsEnrichment(it) }
-        var enriched = 0
+        if (toEnrich.isEmpty()) return 0
 
-        for ((index, article) in toEnrich.withIndex()) {
-            if (index > 0) delay(RATE_LIMIT_MS)
-            try {
-                val result = enrichSingle(article)
-                if (result != null) enriched++
-            } catch (_: Exception) {
-                // Continue with next article on failure
-            }
+        // Group by source type so different sources run in parallel
+        // while same-source articles respect per-source rate limits
+        val bySource = toEnrich.groupBy { it.sourceType }
+        val semaphore = Semaphore(CONCURRENCY)
+
+        return coroutineScope {
+            bySource.map { (_, group) ->
+                async {
+                    var enriched = 0
+                    for ((index, article) in group.withIndex()) {
+                        if (index > 0) delay(rateLimitMs(article))
+                        semaphore.withPermit {
+                            try {
+                                val result = enrichSingle(article)
+                                if (result != null) enriched++
+                            } catch (_: Exception) {
+                                // Continue with next article on failure
+                            }
+                        }
+                    }
+                    enriched
+                }
+            }.sumOf { it.await() }
         }
-        return enriched
     }
 
     suspend fun enrichSingle(article: Article): Article? {
-        if (article.url.isBlank()) return null
+        val fetchUrl = resolveEnrichmentUrl(article) ?: return null
 
         val html = try {
-            val response = httpClient.get(article.url) {
+            val response = httpClient.get(fetchUrl) {
                 header("User-Agent", USER_AGENT)
                 header("Accept", "text/html")
             }
@@ -47,17 +67,20 @@ class ContentEnricher(
             return null
         }
 
-        val extractedContent = extractContent(article.url, html) ?: return null
+        val extractedContent = extractContent(fetchUrl, html) ?: return null
         if (extractedContent.length < MIN_CONTENT_LENGTH) return null
 
         val updated = article.copy(content = extractedContent)
         db.articleBox.put(updated)
+
+        // Split HTML content into sections and persist for per-section features
+        persistSections(updated.id, extractedContent)
+
         return updated
     }
 
     suspend fun processUnenriched(): Int {
         val unenriched = db.articleBox.query()
-            .equal(Article_.sourceType, "RSS", StringOrder.CASE_SENSITIVE)
             .build()
             .use { it.find() }
             .filter { needsEnrichment(it) }
@@ -68,7 +91,22 @@ class ContentEnricher(
     internal fun needsEnrichment(article: Article): Boolean {
         return article.content.length < CONTENT_THRESHOLD &&
             article.url.isNotBlank() &&
-            article.sourceType == "RSS"
+            article.sourceType in ENRICHABLE_SOURCE_TYPES
+    }
+
+    internal fun resolveEnrichmentUrl(article: Article): String? {
+        if (article.url.isBlank()) return null
+        return when (article.sourceType) {
+            "ARXIV_API" -> resolveArxivHtmlUrl(article)
+            else -> article.url
+        }
+    }
+
+    internal fun resolveArxivHtmlUrl(article: Article): String? {
+        val id = article.arxivId.takeIf { it.isNotBlank() }
+            ?: ARXIV_ID_PATTERN.find(article.url)?.groupValues?.get(1)
+            ?: return null
+        return "$ARXIV_HTML_BASE/$id"
     }
 
     internal fun extractContent(url: String, html: String): String? {
@@ -81,11 +119,48 @@ class ContentEnricher(
         }
     }
 
+    internal fun persistSections(articleId: Long, htmlContent: String) {
+        val localSections = DeepAnalysisService.splitIntoSectionsStatic(htmlContent)
+        if (localSections.isEmpty()) return
+
+        // Remove any existing sections for this article
+        val existing = db.articleSectionBox.query()
+            .equal(ArticleSection_.articleId, articleId)
+            .build()
+            .use { it.find() }
+        if (existing.isNotEmpty()) {
+            db.articleSectionBox.remove(existing)
+        }
+
+        val entities = localSections.mapIndexed { index, s ->
+            ArticleSection(
+                articleId = articleId,
+                sectionIndex = index,
+                heading = s.heading,
+                content = s.content,
+                level = s.level,
+                isKeySection = true,
+            )
+        }
+        db.articleSectionBox.put(entities)
+    }
+
+    private fun rateLimitMs(article: Article): Long {
+        return if (article.sourceType == "ARXIV_API") ARXIV_RATE_LIMIT_MS else RATE_LIMIT_MS
+    }
+
     companion object {
+        internal const val CONCURRENCY = 4
         internal const val RATE_LIMIT_MS = 1000L
+        internal const val ARXIV_RATE_LIMIT_MS = 3000L
         internal const val CONTENT_THRESHOLD = 200
         internal const val MIN_CONTENT_LENGTH = 100
         internal const val USER_AGENT =
             "Mozilla/5.0 (compatible; Lumen/1.0; +https://github.com/ydzat/lumen)"
+        internal const val ARXIV_HTML_BASE = "https://arxiv.org/html"
+
+        internal val ENRICHABLE_SOURCE_TYPES = setOf("RSS", "ARXIV_API")
+
+        private val ARXIV_ID_PATTERN = Regex("""arxiv\.org/abs/(\d+\.\d+)""")
     }
 }

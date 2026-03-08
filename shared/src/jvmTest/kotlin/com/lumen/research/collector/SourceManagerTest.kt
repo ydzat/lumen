@@ -131,7 +131,6 @@ class SourceManagerTest {
         assertTrue("arXiv CS.LG" in names)
         assertTrue("Hacker News" in names)
         assertTrue("Semantic Scholar" in names)
-        assertTrue("Anthropic Blog" in names)
         assertTrue("OpenAI Blog" in names)
         assertTrue("GitHub Releases" in names)
     }

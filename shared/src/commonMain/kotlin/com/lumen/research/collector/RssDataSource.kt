@@ -22,6 +22,7 @@ class RssDataSource(
     override suspend fun fetch(sources: List<Source>, context: FetchContext): DataFetchResult {
         val allArticles = mutableListOf<Article>()
         val errors = mutableListOf<String>()
+        val failedIds = mutableSetOf<Long>()
         var remainingBudget = context.remainingBudget
 
         for (source in sources) {
@@ -33,10 +34,11 @@ class RssDataSource(
                 remainingBudget -= articles.size
             } catch (e: Exception) {
                 errors.add("RSS ${source.name}: ${e.message ?: e::class.simpleName}")
+                failedIds.add(source.id)
             }
         }
 
-        return DataFetchResult(allArticles, errors, SourceType.RSS)
+        return DataFetchResult(allArticles, errors, SourceType.RSS, failedIds)
     }
 
     suspend fun fetchSingle(source: Source): List<Article> {

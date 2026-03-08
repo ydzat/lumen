@@ -156,27 +156,54 @@ class ArticleAnalyzerTest {
     @Test
     fun parseAnalysisResponse_validJson() {
         val response = """{"summary": "A great paper.", "keywords": ["ml", "nlp"]}"""
-        val (summary, keywords) = analyzer.parseAnalysisResponse(response)
+        val result = analyzer.parseAnalysisResponse(response)
 
-        assertEquals("A great paper.", summary)
-        assertEquals("ml,nlp", keywords)
+        assertEquals("A great paper.", result.summary)
+        assertEquals(listOf("ml", "nlp"), result.keywords)
     }
 
     @Test
     fun parseAnalysisResponse_jsonWithSurroundingText() {
         val response = """Here is the analysis: {"summary": "Result.", "keywords": ["ai"]} End."""
-        val (summary, keywords) = analyzer.parseAnalysisResponse(response)
+        val result = analyzer.parseAnalysisResponse(response)
 
-        assertEquals("Result.", summary)
-        assertEquals("ai", keywords)
+        assertEquals("Result.", result.summary)
+        assertEquals(listOf("ai"), result.keywords)
     }
 
     @Test
     fun parseAnalysisResponse_invalidJson_returnsEmpty() {
-        val (summary, keywords) = analyzer.parseAnalysisResponse("not json at all")
+        val result = analyzer.parseAnalysisResponse("not json at all")
 
-        assertEquals("", summary)
-        assertEquals("", keywords)
+        assertEquals("", result.summary)
+        assertEquals(emptyList(), result.keywords)
+    }
+
+    @Test
+    fun parseAnalysisResponse_ignoresUnknownFields() {
+        val response = """{"summary": "Summary.", "keywords": ["ai"], "extraField": "ignored"}"""
+        val result = analyzer.parseAnalysisResponse(response)
+
+        assertEquals("Summary.", result.summary)
+        assertEquals(listOf("ai"), result.keywords)
+    }
+
+    @Test
+    fun buildUserPrompt_stripsHtmlFromContent() {
+        val article = Article(
+            title = "Test",
+            summary = "A summary",
+            content = "<h2>Section</h2><p>Some <strong>bold</strong> text</p>",
+        )
+        val prompt = analyzer.buildUserPrompt(article)
+
+        assertTrue(prompt.contains("Title: Test"))
+        assertTrue(prompt.contains("Summary: A summary"))
+        assertTrue(prompt.contains("Content excerpt:"))
+        // HTML tags should be stripped
+        assertTrue(!prompt.contains("<h2>"))
+        assertTrue(!prompt.contains("<strong>"))
+        assertTrue(prompt.contains("bold"))
     }
 
     @Test

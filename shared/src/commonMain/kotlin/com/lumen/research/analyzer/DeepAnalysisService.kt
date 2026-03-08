@@ -20,19 +20,17 @@ class DeepAnalysisService(
         val content = article.content.ifBlank { article.summary }
         if (content.isBlank()) return emptyList()
 
-        // Remove existing sections if re-analyzing
-        val existing = getSections(articleId)
-        if (existing.isNotEmpty()) {
-            db.articleSectionBox.remove(existing)
+        // Use existing sections (from ArticleAnalyzer pipeline) or extract new ones
+        var sections = getSections(articleId)
+        if (sections.isEmpty()) {
+            // No sections from pipeline — fall back to local extraction
+            sections = extractStructure(articleId, article.title, content)
+            if (sections.isEmpty()) return emptyList()
         }
 
-        // Phase A: Extract structure and identify key sections
-        val sections = extractStructure(articleId, article.title, content)
-        if (sections.isEmpty()) return emptyList()
-
-        // Phase B: Analyze key sections
+        // Analyze key sections that haven't been analyzed yet
         for (section in sections) {
-            if (section.isKeySection) {
+            if (section.isKeySection && section.aiCommentary.isBlank()) {
                 analyzeSection(section, article.title, article.keywords)
             }
         }
@@ -162,57 +160,7 @@ class DeepAnalysisService(
 
     // --- Content splitting ---
 
-    fun splitIntoSections(content: String): List<LocalSection> {
-        val sections = mutableListOf<LocalSection>()
-
-        // Try heading-based splitting first
-        val headingPattern = Regex(
-            """(?:^|\n)(#{1,3})\s+(.+)|<h([1-3])[^>]*>(.*?)</h\3>""",
-            RegexOption.IGNORE_CASE,
-        )
-        val matches = headingPattern.findAll(content).toList()
-
-        if (matches.isNotEmpty()) {
-            // Split by headings
-            for (i in matches.indices) {
-                val match = matches[i]
-                val level = match.groupValues[1].length.takeIf { it > 0 }
-                    ?: match.groupValues[3].toIntOrNull() ?: 1
-                val heading = match.groupValues[2].ifBlank { match.groupValues[4] }.trim()
-                val start = match.range.last + 1
-                val end = if (i + 1 < matches.size) matches[i + 1].range.first else content.length
-                val sectionContent = content.substring(start, end).trim()
-                if (sectionContent.isNotBlank()) {
-                    sections.add(LocalSection(heading, sectionContent, level))
-                }
-            }
-
-            // Add content before first heading as introduction
-            val beforeFirst = content.substring(0, matches[0].range.first).trim()
-            if (beforeFirst.isNotBlank()) {
-                sections.add(0, LocalSection("Introduction", beforeFirst, 1))
-            }
-        }
-
-        if (sections.isEmpty()) {
-            // Fall back to paragraph-based splitting
-            val paragraphs = content.split(Regex("\n{2,}")).filter { it.isNotBlank() }
-            if (paragraphs.size <= 3) {
-                sections.add(LocalSection("Full Content", content.trim(), 1))
-            } else {
-                paragraphs.forEachIndexed { index, para ->
-                    val heading = when (index) {
-                        0 -> "Opening"
-                        paragraphs.lastIndex -> "Conclusion"
-                        else -> "Section ${index + 1}"
-                    }
-                    sections.add(LocalSection(heading, para.trim(), 2))
-                }
-            }
-        }
-
-        return sections
-    }
+    fun splitIntoSections(content: String): List<LocalSection> = splitIntoSectionsStatic(content)
 
     // --- Response parsing ---
 
@@ -275,6 +223,58 @@ class DeepAnalysisService(
 
     companion object {
         const val DEEP_ANALYZED = "deep_analyzed"
+
+        fun splitIntoSectionsStatic(content: String): List<LocalSection> {
+            val sections = mutableListOf<LocalSection>()
+
+            // Try heading-based splitting first
+            val headingPattern = Regex(
+                """(?:^|\n)(#{1,3})\s+(.+)|<h([1-3])[^>]*>(.*?)</h\3>""",
+                RegexOption.IGNORE_CASE,
+            )
+            val matches = headingPattern.findAll(content).toList()
+
+            if (matches.isNotEmpty()) {
+                // Split by headings
+                for (i in matches.indices) {
+                    val match = matches[i]
+                    val level = match.groupValues[1].length.takeIf { it > 0 }
+                        ?: match.groupValues[3].toIntOrNull() ?: 1
+                    val heading = match.groupValues[2].ifBlank { match.groupValues[4] }.trim()
+                    val start = match.range.last + 1
+                    val end = if (i + 1 < matches.size) matches[i + 1].range.first else content.length
+                    val sectionContent = content.substring(start, end).trim()
+                    if (sectionContent.isNotBlank()) {
+                        sections.add(LocalSection(heading, sectionContent, level))
+                    }
+                }
+
+                // Add content before first heading as introduction
+                val beforeFirst = content.substring(0, matches[0].range.first).trim()
+                if (beforeFirst.isNotBlank()) {
+                    sections.add(0, LocalSection("Introduction", beforeFirst, 1))
+                }
+            }
+
+            if (sections.isEmpty()) {
+                // Fall back to paragraph-based splitting
+                val paragraphs = content.split(Regex("\n{2,}")).filter { it.isNotBlank() }
+                if (paragraphs.size <= 3) {
+                    sections.add(LocalSection("Full Content", content.trim(), 1))
+                } else {
+                    paragraphs.forEachIndexed { index, para ->
+                        val heading = when (index) {
+                            0 -> "Opening"
+                            paragraphs.lastIndex -> "Conclusion"
+                            else -> "Section ${index + 1}"
+                        }
+                        sections.add(LocalSection(heading, para.trim(), 2))
+                    }
+                }
+            }
+
+            return sections
+        }
 
         internal const val STRUCTURE_SYSTEM_PROMPT = """You are an expert at analyzing article structure. Given the outline of an article with section previews, identify which sections contain the most important content.
 

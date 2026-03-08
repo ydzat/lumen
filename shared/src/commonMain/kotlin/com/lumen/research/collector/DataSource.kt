@@ -13,4 +13,5 @@ data class DataFetchResult(
     val articles: List<Article>,
     val errors: List<String>,
     val sourceType: SourceType,
+    val failedSourceIds: Set<Long> = emptySet(),
 )

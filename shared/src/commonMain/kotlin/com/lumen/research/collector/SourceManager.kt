@@ -118,13 +118,6 @@ class SourceManager(private val db: LumenDatabase) {
                 description = "Hacker News Front Page",
             ),
             Source(
-                name = "Anthropic Blog",
-                url = "https://www.anthropic.com/feed.xml",
-                type = "RSS",
-                category = "tech",
-                description = "Anthropic research and announcements",
-            ),
-            Source(
                 name = "OpenAI Blog",
                 url = "https://openai.com/blog/rss.xml",
                 type = "RSS",

@@ -16,6 +16,9 @@ import com.lumen.research.spark.SparkEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import java.util.concurrent.atomic.AtomicInteger
 
 class CollectorManager(
     private val articleAnalyzer: ArticleAnalyzer,
@@ -77,11 +80,18 @@ class CollectorManager(
             }
         }
 
-        // 2c. Content enrichment (fetch full article for RSS with empty content)
-        val enrichedCount = if (contentEnricher != null && afterDedup.isNotEmpty()) {
+        // 2c. Content enrichment — enrich both new and existing unenriched articles
+        val enrichedCount = if (contentEnricher != null) {
             progress?.onProgress(PipelineStage.ENRICHING, 0, afterDedup.size)
             try {
-                contentEnricher.enrichAll(afterDedup)
+                // Enrich new articles from this fetch + any previously unenriched in DB
+                val newEnriched = if (afterDedup.isNotEmpty()) {
+                    contentEnricher.enrichAll(afterDedup)
+                } else {
+                    0
+                }
+                val existingEnriched = contentEnricher.processUnenriched()
+                newEnriched + existingEnriched
             } catch (_: Exception) {
                 0
             }
@@ -89,17 +99,14 @@ class CollectorManager(
             0
         }
 
-        // 3. Embed ALL (free operation)
+        // 3. Embed + Score pipeline (each article: embed → score immediately)
         progress?.onProgress(PipelineStage.EMBEDDING, 0, afterDedup.size)
-        val embeddedCount = processUnembedded()
+        val (embeddedCount, scoredCount, scoredArticles) = embedAndScore(progress)
+        progress?.onProgress(PipelineStage.SCORING, scoredCount, scoredCount)
 
-        // 4. Score ALL embedded (free operation)
-        progress?.onProgress(PipelineStage.SCORING, 0, 1)
-        val (scoredCount, scoredArticles) = scoreUnprocessed()
-
-        // 5. Analyze top N scored (LLM operation, respects budget)
+        // 4. Analyze top N scored (concurrent LLM calls)
         progress?.onProgress(PipelineStage.ANALYZING, 0, analysisBudget)
-        val analyzedCount = analyzeTop(analysisBudget)
+        val analyzedCount = analyzeTop(analysisBudget, progress)
 
         // 6. Digest
         progress?.onProgress(PipelineStage.DIGESTING, 0, 1)
@@ -151,6 +158,93 @@ class CollectorManager(
         return articles
     }
 
+    private suspend fun embedAndScore(
+        progress: PipelineProgress? = null,
+    ): Triple<Int, Int, List<Article>> {
+        if (db == null) return Triple(0, 0, emptyList())
+
+        val unembedded = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.NEW, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+            .filter { it.embedding.isEmpty() }
+
+        val scoredArticles = mutableListOf<Article>()
+        var embeddedCount = 0
+
+        // Batch embed all unembedded articles at once for efficiency
+        val embeddedArticles = try {
+            articleAnalyzer.embedBatchOnly(unembedded)
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        for (embedded in embeddedArticles) {
+            try {
+                embeddedCount++
+                progress?.onProgress(PipelineStage.EMBEDDING, embeddedCount, unembedded.size)
+
+                val scored = relevanceScorer.scoreAndPersist(embedded)
+                val updated = scored.copy(analysisStatus = AnalysisStatus.SCORED)
+                db.articleBox.put(updated)
+                scoredArticles.add(updated)
+            } catch (_: Exception) {
+                // Continue processing remaining articles on individual failures
+            }
+        }
+
+        // Also score any previously embedded but unscored articles
+        val previouslyEmbedded = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.EMBEDDED, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+        for (article in previouslyEmbedded) {
+            try {
+                val scored = relevanceScorer.scoreAndPersist(article)
+                val updated = scored.copy(analysisStatus = AnalysisStatus.SCORED)
+                db.articleBox.put(updated)
+                scoredArticles.add(updated)
+            } catch (_: Exception) {
+                // Continue
+            }
+        }
+
+        return Triple(embeddedCount, scoredArticles.size, scoredArticles)
+    }
+
+    suspend fun analyzeTop(limit: Int = 10, progress: PipelineProgress? = null): Int {
+        if (db == null) return 0
+        val topScored = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.SCORED, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+            .sortedByDescending { it.aiRelevanceScore }
+            .take(limit)
+
+        if (topScored.isEmpty()) return 0
+
+        val completed = AtomicInteger(0)
+        val semaphore = Semaphore(LLM_CONCURRENCY)
+
+        coroutineScope {
+            topScored.map { article ->
+                async {
+                    semaphore.withPermit {
+                        try {
+                            articleAnalyzer.analyzeWithLlm(article)
+                            val done = completed.incrementAndGet()
+                            progress?.onProgress(PipelineStage.ANALYZING, done, topScored.size)
+                        } catch (_: Exception) {
+                            // Continue with remaining articles on failure
+                        }
+                    }
+                }
+            }.awaitAll()
+        }
+
+        return completed.get()
+    }
+
     suspend fun processUnembedded(): Int {
         if (db == null) return 0
         val unembedded = db.articleBox.query()
@@ -164,9 +258,7 @@ class CollectorManager(
             try {
                 articleAnalyzer.embedOnly(article)
                 count++
-            } catch (_: Exception) {
-                // Continue processing remaining articles on individual failures
-            }
+            } catch (_: Exception) { }
         }
         return count
     }
@@ -186,23 +278,6 @@ class CollectorManager(
             scoredArticles.add(updated)
         }
         return scoredArticles.size to scoredArticles
-    }
-
-    suspend fun analyzeTop(limit: Int = 10): Int {
-        if (db == null) return 0
-        val topScored = db.articleBox.query()
-            .equal(Article_.analysisStatus, AnalysisStatus.SCORED, StringOrder.CASE_SENSITIVE)
-            .build()
-            .use { it.find() }
-            .sortedByDescending { it.aiRelevanceScore }
-            .take(limit)
-
-        var count = 0
-        for (article in topScored) {
-            articleAnalyzer.analyzeWithLlm(article)
-            count++
-        }
-        return count
     }
 
     suspend fun analyzeSingle(articleId: Long): Article? {
@@ -243,15 +318,15 @@ class CollectorManager(
                         val ds = dataSources.find { it.type == type }
                         if (ds != null) {
                             val result = ds.fetch(sources, context)
-                            // Record outcome per source-type group (not per individual source)
+                            // Record outcome per individual source
                             for (source in sources) {
-                                if (result.errors.isEmpty()) {
-                                    sourceManager.recordSuccess(source.id)
-                                } else {
+                                if (source.id in result.failedSourceIds) {
                                     sourceManager.recordFailure(
                                         source.id,
                                         result.errors.firstOrNull() ?: "Unknown error",
                                     )
+                                } else {
+                                    sourceManager.recordSuccess(source.id)
                                 }
                             }
                             result
@@ -270,6 +345,10 @@ class CollectorManager(
         }
 
         return results.flatMap { it.articles } to results.flatMap { it.errors }
+    }
+
+    companion object {
+        const val LLM_CONCURRENCY = 3
     }
 }
 

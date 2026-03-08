@@ -27,6 +27,7 @@ class ScholarDataSource(
     override suspend fun fetch(sources: List<Source>, context: FetchContext): DataFetchResult {
         val allArticles = mutableListOf<Article>()
         val errors = mutableListOf<String>()
+        val failedIds = mutableSetOf<Long>()
         var remainingBudget = context.remainingBudget
 
         val keywords = context.keywords
@@ -52,6 +53,7 @@ class ScholarDataSource(
                 val response = httpClient.get(url)
                 if (!response.status.isSuccess()) {
                     errors.add("Semantic Scholar error for ${source.name}: HTTP ${response.status.value}")
+                    failedIds.add(source.id)
                     continue
                 }
 
@@ -81,10 +83,11 @@ class ScholarDataSource(
                 remainingBudget -= newArticles.size
             } catch (e: Exception) {
                 errors.add("Scholar ${source.name}: ${e.message ?: e::class.simpleName}")
+                failedIds.add(source.id)
             }
         }
 
-        return DataFetchResult(allArticles, errors, SourceType.SEMANTIC_SCHOLAR)
+        return DataFetchResult(allArticles, errors, SourceType.SEMANTIC_SCHOLAR, failedIds)
     }
 
     internal fun buildSearchUrl(query: String, limit: Int): String {

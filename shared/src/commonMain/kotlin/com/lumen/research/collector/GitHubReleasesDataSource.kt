@@ -26,6 +26,7 @@ class GitHubReleasesDataSource(
     override suspend fun fetch(sources: List<Source>, context: FetchContext): DataFetchResult {
         val allArticles = mutableListOf<Article>()
         val errors = mutableListOf<String>()
+        val failedIds = mutableSetOf<Long>()
         var remainingBudget = context.remainingBudget
         val existingUrls = queryExistingUrls()
         var requestCount = 0
@@ -83,10 +84,11 @@ class GitHubReleasesDataSource(
                 }
             } catch (e: Exception) {
                 errors.add("GitHub Releases ${source.name}: ${e.message ?: e::class.simpleName}")
+                failedIds.add(source.id)
             }
         }
 
-        return DataFetchResult(allArticles, errors, SourceType.GITHUB_RELEASES)
+        return DataFetchResult(allArticles, errors, SourceType.GITHUB_RELEASES, failedIds)
     }
 
     internal fun buildApiUrl(repo: String, perPage: Int): String {
