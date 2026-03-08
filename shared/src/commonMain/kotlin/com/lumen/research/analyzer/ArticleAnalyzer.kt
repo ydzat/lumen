@@ -5,6 +5,7 @@ import com.lumen.core.util.extractJsonObject
 import com.lumen.core.database.entities.Article
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.LlmCall
+import com.lumen.research.collector.AnalysisStatus
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -17,20 +18,32 @@ class ArticleAnalyzer(
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun analyze(article: Article): Article {
+        val embedded = embedOnly(article)
+        return analyzeWithLlm(embedded)
+    }
+
+    suspend fun embedOnly(article: Article): Article {
         val embeddingText = listOf(article.title, article.summary).filter { it.isNotBlank() }.joinToString(" ")
         val embedding = embeddingClient.embed(embeddingText)
+        val updated = article.copy(
+            embedding = embedding,
+            analysisStatus = AnalysisStatus.EMBEDDED,
+        )
+        val id = db.articleBox.put(updated)
+        return db.articleBox.get(id)
+    }
 
+    suspend fun analyzeWithLlm(article: Article): Article {
         val (aiSummary, keywords) = try {
             val response = llmCall.execute(SYSTEM_PROMPT, buildUserPrompt(article))
             parseAnalysisResponse(response)
         } catch (_: Exception) {
             article.summary to ""
         }
-
         val updated = article.copy(
             aiSummary = aiSummary,
             keywords = keywords,
-            embedding = embedding,
+            analysisStatus = AnalysisStatus.ANALYZED,
         )
         val id = db.articleBox.put(updated)
         return db.articleBox.get(id)

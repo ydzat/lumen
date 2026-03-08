@@ -58,6 +58,7 @@ import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
+import com.lumen.research.collector.AnalysisStatus
 import com.lumen.research.collector.CollectorManager
 import com.lumen.research.parseCsvSet
 import kotlinx.coroutines.Dispatchers
@@ -165,7 +166,7 @@ fun ArticlesScreen() {
                                 }
                                 loadData()
                                 val msg = buildString {
-                                    append("Fetched ${result.fetched}, analyzed ${result.analyzed} article(s)")
+                                    append("Fetched ${result.fetched}, embedded ${result.embedded}, analyzed ${result.analyzed} article(s)")
                                     if (result.fetchErrors.isNotEmpty()) {
                                         append("\nErrors: ${result.fetchErrors.joinToString("; ")}")
                                     }
@@ -391,6 +392,22 @@ private fun ArticleCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    val statusLabel = when (article.analysisStatus) {
+                        AnalysisStatus.ANALYZED -> "Analyzed"
+                        AnalysisStatus.SCORED -> "Scored"
+                        AnalysisStatus.EMBEDDED -> "Embedded"
+                        else -> "New"
+                    }
+                    val statusColor = when (article.analysisStatus) {
+                        AnalysisStatus.ANALYZED -> MaterialTheme.colorScheme.primary
+                        AnalysisStatus.SCORED -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    Text(
+                        text = statusLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor,
+                    )
                 }
                 if (article.aiSummary.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))

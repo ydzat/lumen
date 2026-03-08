@@ -5,6 +5,7 @@ import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.MyObjectBox
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.LlmCall
+import com.lumen.research.collector.AnalysisStatus
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.test.AfterTest
@@ -176,5 +177,58 @@ class ArticleAnalyzerTest {
 
         assertEquals("", summary)
         assertEquals("", keywords)
+    }
+
+    @Test
+    fun embedOnly_setsEmbeddingAndStatus_noLlmCall() = runBlocking {
+        val articleId = db.articleBox.put(Article(
+            title = "Embed Only Paper",
+            url = "https://example.com/embed",
+            summary = "Summary text",
+        ))
+
+        val result = analyzer.embedOnly(db.articleBox.get(articleId))
+
+        assertTrue(result.embedding.isNotEmpty())
+        assertEquals(384, result.embedding.size)
+        assertEquals(AnalysisStatus.EMBEDDED, result.analysisStatus)
+        assertEquals(1, embedCallCount)
+        assertEquals(0, llmCallCount)
+    }
+
+    @Test
+    fun analyzeWithLlm_setsSummaryAndStatus_noEmbedding() = runBlocking {
+        val articleId = db.articleBox.put(Article(
+            title = "LLM Only Paper",
+            url = "https://example.com/llm",
+            summary = "Summary text",
+            embedding = FloatArray(384) { 0.1f },
+            analysisStatus = AnalysisStatus.EMBEDDED,
+        ))
+
+        val result = analyzer.analyzeWithLlm(db.articleBox.get(articleId))
+
+        assertEquals("This paper presents a novel approach to AI safety.", result.aiSummary)
+        assertEquals("AI,safety,alignment", result.keywords)
+        assertEquals(AnalysisStatus.ANALYZED, result.analysisStatus)
+        assertEquals(1, llmCallCount)
+        assertEquals(0, embedCallCount)
+    }
+
+    @Test
+    fun analyze_delegatesToBothMethods() = runBlocking {
+        val articleId = db.articleBox.put(Article(
+            title = "Full Analysis Paper",
+            url = "https://example.com/full",
+            summary = "Summary text",
+        ))
+
+        val result = analyzer.analyze(db.articleBox.get(articleId))
+
+        assertTrue(result.embedding.isNotEmpty())
+        assertTrue(result.aiSummary.isNotBlank())
+        assertEquals(AnalysisStatus.ANALYZED, result.analysisStatus)
+        assertEquals(1, embedCallCount)
+        assertEquals(1, llmCallCount)
     }
 }

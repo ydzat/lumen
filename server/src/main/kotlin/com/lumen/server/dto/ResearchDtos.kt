@@ -104,6 +104,7 @@ data class DigestDto(
 @Serializable
 data class AnalyzeResponse(
     val fetched: Int,
+    val embedded: Int = 0,
     val analyzed: Int,
     val scored: Int,
     val digestId: Long,

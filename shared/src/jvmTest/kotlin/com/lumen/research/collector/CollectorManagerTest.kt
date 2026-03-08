@@ -66,7 +66,18 @@ class CollectorManagerTest {
             dataSources = dataSources,
             sourceManager = sourceManager,
             deduplicator = deduplicator,
-            embeddingClient = fakeEmbeddingClient,
+            db = db,
+        )
+    }
+
+    private fun createManagerWithDb(): CollectorManager {
+        val analyzer = ArticleAnalyzer(db, noopLlmCall, fakeEmbeddingClient)
+        val scorer = RelevanceScorer(db, null)
+        val digestGenerator = DigestGenerator(db, noopLlmCall, null)
+        return CollectorManager(
+            articleAnalyzer = analyzer,
+            relevanceScorer = scorer,
+            digestGenerator = digestGenerator,
             db = db,
         )
     }
@@ -204,8 +215,154 @@ class CollectorManagerTest {
         manager.runPipeline(progress = PipelineProgress { stage, _, _ -> stages.add(stage) })
 
         assertTrue(stages.contains(PipelineStage.FETCHING))
-        assertTrue(stages.contains(PipelineStage.ANALYZING))
+        assertTrue(stages.contains(PipelineStage.EMBEDDING))
         assertTrue(stages.contains(PipelineStage.SCORING))
+        assertTrue(stages.contains(PipelineStage.ANALYZING))
         assertTrue(stages.contains(PipelineStage.DIGESTING))
+    }
+
+    // --- Tiered pipeline tests ---
+
+    @Test
+    fun processUnembedded_setsStatusToEmbedded() = runBlocking {
+        db.articleBox.put(Article(
+            title = "New Article",
+            url = "https://example.com/new",
+            summary = "Summary",
+            analysisStatus = AnalysisStatus.NEW,
+        ))
+        val manager = createManagerWithDb()
+
+        val count = manager.processUnembedded()
+
+        assertEquals(1, count)
+        val article = db.articleBox.all.first()
+        assertEquals(AnalysisStatus.EMBEDDED, article.analysisStatus)
+        assertTrue(article.embedding.isNotEmpty())
+    }
+
+    @Test
+    fun scoreUnprocessed_setsStatusToScored() = runBlocking {
+        db.articleBox.put(Article(
+            title = "Embedded Article",
+            url = "https://example.com/embedded",
+            embedding = FloatArray(384) { 0.1f },
+            analysisStatus = AnalysisStatus.EMBEDDED,
+        ))
+        val manager = createManagerWithDb()
+
+        val (count, scoredArticles) = manager.scoreUnprocessed()
+
+        assertEquals(1, count)
+        assertEquals(1, scoredArticles.size)
+        val article = db.articleBox.all.first()
+        assertEquals(AnalysisStatus.SCORED, article.analysisStatus)
+    }
+
+    @Test
+    fun scoreUnprocessed_skipsNewArticles() = runBlocking {
+        db.articleBox.put(Article(
+            title = "New Article",
+            url = "https://example.com/new",
+            analysisStatus = AnalysisStatus.NEW,
+        ))
+        val manager = createManagerWithDb()
+
+        val (count, _) = manager.scoreUnprocessed()
+
+        assertEquals(0, count)
+    }
+
+    @Test
+    fun analyzeTop_selectsScoredByRelevance() = runBlocking {
+        db.articleBox.put(Article(
+            title = "Low Score",
+            url = "https://example.com/low",
+            embedding = FloatArray(384) { 0.1f },
+            aiRelevanceScore = 0.3f,
+            analysisStatus = AnalysisStatus.SCORED,
+        ))
+        db.articleBox.put(Article(
+            title = "High Score",
+            url = "https://example.com/high",
+            embedding = FloatArray(384) { 0.1f },
+            aiRelevanceScore = 0.9f,
+            analysisStatus = AnalysisStatus.SCORED,
+        ))
+        val manager = createManagerWithDb()
+
+        val count = manager.analyzeTop(1)
+
+        assertEquals(1, count)
+        val analyzed = db.articleBox.all.filter { it.analysisStatus == AnalysisStatus.ANALYZED }
+        assertEquals(1, analyzed.size)
+        assertEquals("High Score", analyzed.first().title)
+    }
+
+    @Test
+    fun analyzeTop_ignoresNonScoredArticles() = runBlocking {
+        db.articleBox.put(Article(
+            title = "Embedded Only",
+            url = "https://example.com/embedded",
+            embedding = FloatArray(384) { 0.1f },
+            analysisStatus = AnalysisStatus.EMBEDDED,
+        ))
+        val manager = createManagerWithDb()
+
+        val count = manager.analyzeTop(10)
+
+        assertEquals(0, count)
+    }
+
+    @Test
+    fun analyzeSingle_embedsIfNeeded_thenAnalyzes() = runBlocking {
+        val id = db.articleBox.put(Article(
+            title = "Unprocessed Article",
+            url = "https://example.com/unprocessed",
+            summary = "Some summary",
+        ))
+        val manager = createManagerWithDb()
+
+        val result = manager.analyzeSingle(id)
+
+        assertNotNull(result)
+        assertTrue(result.embedding.isNotEmpty())
+        assertTrue(result.aiSummary.isNotBlank())
+        assertEquals(AnalysisStatus.ANALYZED, result.analysisStatus)
+    }
+
+    @Test
+    fun runPipeline_tieredOrder_embedsScoresAnalyzes() = runBlocking {
+        val fakeDataSource = object : DataSource {
+            override val type = SourceType.ARXIV_API
+            override val displayName = "Fake"
+            override suspend fun fetch(sources: List<Source>, context: FetchContext): DataFetchResult {
+                return DataFetchResult(
+                    listOf(
+                        Article(title = "Paper A", url = "https://example.com/a", summary = "Summary A"),
+                        Article(title = "Paper B", url = "https://example.com/b", summary = "Summary B"),
+                        Article(title = "Paper C", url = "https://example.com/c", summary = "Summary C"),
+                    ),
+                    emptyList(),
+                    SourceType.ARXIV_API,
+                )
+            }
+        }
+
+        db.sourceBox.put(Source(name = "arXiv", url = "https://arxiv.org", type = "ARXIV_API"))
+        val manager = createManagerWithDataSources(listOf(fakeDataSource))
+
+        val result = manager.runPipeline(analysisBudget = 2)
+
+        assertEquals(3, result.fetched)
+        assertEquals(3, result.embedded)
+        assertEquals(3, result.scored)
+        assertEquals(2, result.analyzed)
+
+        val articles = db.articleBox.all
+        val analyzedArticles = articles.filter { it.analysisStatus == AnalysisStatus.ANALYZED }
+        val scoredArticles = articles.filter { it.analysisStatus == AnalysisStatus.SCORED }
+        assertEquals(2, analyzedArticles.size)
+        assertEquals(1, scoredArticles.size)
     }
 }

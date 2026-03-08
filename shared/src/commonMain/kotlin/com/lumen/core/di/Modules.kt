@@ -131,7 +131,6 @@ val researchModule = module {
             dataSources = get(),
             sourceManager = get(),
             deduplicator = get(),
-            embeddingClient = getOrNull(),
             db = getOrNull(),
             projectManager = getOrNull(),
             sparkEngine = getOrNull(),
