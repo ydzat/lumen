@@ -26,6 +26,7 @@ import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.DataSource
 import com.lumen.research.collector.Deduplicator
 import com.lumen.research.collector.RssCollector
+import com.lumen.research.collector.ScholarDataSource
 import com.lumen.research.collector.SourceManager
 import com.lumen.research.digest.DigestFormatter
 import com.lumen.research.digest.DigestGenerator
@@ -92,7 +93,19 @@ val researchModule = module {
             },
         )
     }
-    single<List<DataSource>> { listOf(get<ArxivApiDataSource>()) }
+    single {
+        ScholarDataSource(
+            db = get(),
+            httpClient = HttpClient {
+                install(HttpTimeout) {
+                    connectTimeoutMillis = 30_000
+                    requestTimeoutMillis = 60_000
+                    socketTimeoutMillis = 60_000
+                }
+            },
+        )
+    }
+    single<List<DataSource>> { listOf(get<ArxivApiDataSource>(), get<ScholarDataSource>()) }
     single {
         CollectorManager(
             rssCollector = get(),
