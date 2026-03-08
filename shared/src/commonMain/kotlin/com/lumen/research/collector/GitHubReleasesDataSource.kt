@@ -78,7 +78,9 @@ class GitHubReleasesDataSource(
                     }
                 }
 
-                db.sourceBox.put(source.copy(lastFetchedAt = System.currentTimeMillis()))
+                if (repos.isNotEmpty()) {
+                    db.sourceBox.put(source.copy(lastFetchedAt = System.currentTimeMillis()))
+                }
             } catch (e: Exception) {
                 errors.add("GitHub Releases ${source.name}: ${e.message ?: e::class.simpleName}")
             }
@@ -88,6 +90,7 @@ class GitHubReleasesDataSource(
     }
 
     internal fun buildApiUrl(repo: String, perPage: Int): String {
+        require(REPO_PATTERN.matches(repo)) { "Invalid repo format: $repo" }
         return "$BASE_URL/repos/$repo/releases?per_page=$perPage"
     }
 
@@ -126,6 +129,7 @@ class GitHubReleasesDataSource(
         internal const val RATE_LIMIT_MS = 1000L
         internal const val MAX_PER_REPO_DEFAULT = 10
         private const val SUMMARY_MAX_LENGTH = 500
+        private val REPO_PATTERN = Regex("[\\w.-]+/[\\w.-]+")
 
         private val json = Json { ignoreUnknownKeys = true }
 
