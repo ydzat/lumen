@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import com.lumen.core.config.ConfigStore
 import com.lumen.ui.navigation.Tab
 import com.lumen.ui.navigation.TabContent
+import com.lumen.ui.screen.OnboardingScreen
 import com.lumen.ui.theme.LumenTheme
 import com.lumen.ui.theme.ThemeState
 import org.koin.android.ext.android.inject
@@ -28,27 +29,34 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ThemeState.mode = configStore.load().preferences.theme
+        val config = configStore.load()
+        ThemeState.mode = config.preferences.theme
         setContent {
             LumenTheme {
-                var selectedTab by remember { mutableStateOf(Tab.Home) }
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    bottomBar = {
-                        NavigationBar {
-                            Tab.entries.forEach { tab ->
-                                NavigationBarItem(
-                                    selected = selectedTab == tab,
-                                    onClick = { selectedTab = tab },
-                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                    label = { Text(tab.label) },
-                                )
+                var showOnboarding by remember { mutableStateOf(!config.preferences.hasCompletedOnboarding) }
+
+                if (showOnboarding) {
+                    OnboardingScreen(onComplete = { showOnboarding = false })
+                } else {
+                    var selectedTab by remember { mutableStateOf(Tab.Home) }
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        bottomBar = {
+                            NavigationBar {
+                                Tab.entries.forEach { tab ->
+                                    NavigationBarItem(
+                                        selected = selectedTab == tab,
+                                        onClick = { selectedTab = tab },
+                                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                        label = { Text(tab.label) },
+                                    )
+                                }
                             }
+                        },
+                    ) { padding ->
+                        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                            TabContent(selectedTab)
                         }
-                    },
-                ) { padding ->
-                    Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                        TabContent(selectedTab)
                     }
                 }
             }
