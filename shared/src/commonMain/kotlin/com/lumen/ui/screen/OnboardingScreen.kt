@@ -359,10 +359,10 @@ private fun PersonaStep(
     }
     var selectedId by remember { mutableStateOf(personas.firstOrNull { it.isActive }?.id ?: 0L) }
 
-    Text("Step 3/3: Choose Your Persona", style = MaterialTheme.typography.titleMedium)
+    Text("Step 3/3: Communication Style", style = MaterialTheme.typography.titleMedium)
     Spacer(Modifier.height(8.dp))
     Text(
-        "Select how Lumen should interact with you. You can change this anytime in Settings.",
+        "Choose Lumen's default communication style. You can switch anytime in chat.",
         style = MaterialTheme.typography.bodyMedium,
     )
     Spacer(Modifier.height(16.dp))

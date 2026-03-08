@@ -46,6 +46,7 @@ kotlin {
             implementation(libs.ktor.serialization.json)
             implementation(libs.koog.agents)
             implementation(libs.rssparser)
+            implementation(libs.markdown.renderer.m3)
             api(project(":shared-db"))
         }
 

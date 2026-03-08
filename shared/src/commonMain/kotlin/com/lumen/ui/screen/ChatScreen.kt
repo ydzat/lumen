@@ -29,10 +29,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -65,9 +67,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownColor
+import com.mikepenz.markdown.m3.markdownTypography
 import com.lumen.companion.agent.ChatEvent
 import com.lumen.companion.agent.LumenAgent
 import com.lumen.companion.conversation.ConversationManager
@@ -766,6 +772,9 @@ private fun UserBubble(text: String) {
 
 @Composable
 private fun AssistantBubble(text: String, onTapToSkip: () -> Unit) {
+    var showSource by remember { mutableStateOf(false) }
+    val displayText = text.ifEmpty { "..." }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
@@ -773,14 +782,55 @@ private fun AssistantBubble(text: String, onTapToSkip: () -> Unit) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp),
-            modifier = Modifier.widthIn(max = 300.dp).clickable(onClick = onTapToSkip),
+            modifier = Modifier.widthIn(max = 500.dp).clickable(onClick = onTapToSkip),
         ) {
-            Text(
-                text = text.ifEmpty { "..." },
-                modifier = Modifier.padding(12.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(modifier = Modifier.padding(12.dp)) {
+                if (showSource || displayText == "...") {
+                    Text(
+                        text = displayText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Markdown(
+                        content = displayText,
+                        colors = markdownColor(
+                            text = MaterialTheme.colorScheme.onSurfaceVariant,
+                            codeBackground = MaterialTheme.colorScheme.surface,
+                            codeText = MaterialTheme.colorScheme.onSurface,
+                            dividerColor = MaterialTheme.colorScheme.outlineVariant,
+                        ),
+                        typography = markdownTypography(
+                            text = MaterialTheme.typography.bodyMedium,
+                            h1 = MaterialTheme.typography.titleLarge,
+                            h2 = MaterialTheme.typography.titleMedium,
+                            h3 = MaterialTheme.typography.titleSmall,
+                            code = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                            ),
+                        ),
+                    )
+                }
+                if (text.isNotEmpty() && text != "...") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        IconButton(
+                            onClick = { showSource = !showSource },
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(
+                                imageVector = if (showSource) Icons.Default.Visibility
+                                else Icons.Default.Code,
+                                contentDescription = if (showSource) "Preview" else "Source",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
