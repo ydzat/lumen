@@ -39,7 +39,7 @@ class SearchArticlesTool(
             .use { it.find() }
 
         val cutoffMs = if (args.daysBack > 0) {
-            System.currentTimeMillis() - args.daysBack * MS_PER_DAY
+            System.currentTimeMillis() - args.daysBack.toLong() * MS_PER_DAY
         } else {
             0L
         }
