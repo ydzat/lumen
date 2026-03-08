@@ -90,6 +90,7 @@ fun ArticlesScreen() {
     val memoryManager = getKoin().getOrNull<MemoryManager>()
     val articleAnalyzer = koinInject<ArticleAnalyzer>()
     val deepAnalysisService = koinInject<DeepAnalysisService>()
+    val configStore = koinInject<com.lumen.core.config.ConfigStore>()
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -505,7 +506,6 @@ fun ArticlesScreen() {
 
     // Full detail screen
     detailArticle?.let { article ->
-        val configStore = koinInject<com.lumen.core.config.ConfigStore>()
         ArticleDetailScreen(
             article = article,
             sourceName = sourceNames[article.sourceId] ?: "Unknown",

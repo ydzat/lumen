@@ -5,7 +5,6 @@ import com.lumen.core.database.entities.ArticleSection
 import com.lumen.core.database.entities.ArticleSection_
 import com.lumen.core.util.extractJsonObject
 import com.lumen.core.memory.LlmCall
-import io.objectbox.query.QueryBuilder.StringOrder
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -20,6 +19,12 @@ class DeepAnalysisService(
         val article = db.articleBox.get(articleId) ?: return emptyList()
         val content = article.content.ifBlank { article.summary }
         if (content.isBlank()) return emptyList()
+
+        // Remove existing sections if re-analyzing
+        val existing = getSections(articleId)
+        if (existing.isNotEmpty()) {
+            db.articleSectionBox.remove(existing)
+        }
 
         // Phase A: Extract structure and identify key sections
         val sections = extractStructure(articleId, article.title, content)
@@ -61,12 +66,11 @@ class DeepAnalysisService(
     }
 
     fun getSections(articleId: Long): List<ArticleSection> {
-        val query = db.articleSectionBox.query()
+        return db.articleSectionBox.query()
             .equal(ArticleSection_.articleId, articleId)
             .build()
-        val results = query.find().sortedBy { it.sectionIndex }
-        query.close()
-        return results
+            .use { it.find() }
+            .sortedBy { it.sectionIndex }
     }
 
     private suspend fun extractStructure(
@@ -250,7 +254,7 @@ class DeepAnalysisService(
     )
 
     companion object {
-        const val DEEP_ANALYZED = "analyzed"
+        const val DEEP_ANALYZED = "deep_analyzed"
 
         internal const val STRUCTURE_SYSTEM_PROMPT = """You are an expert at analyzing article structure. Given the outline of an article with section previews, identify which sections contain the most important content.
 
