@@ -92,8 +92,7 @@ class LumenAgent(
 
             while (iterations < MAX_TOOL_ITERATIONS) {
                 val prompt = Prompt(conversationMessages, "lumen-chat", LLMParams())
-                val toolDescriptors = tools.map { it.descriptor }
-                val responses = llmClient.execute(prompt, model, toolDescriptors)
+                val responses = RetryExecutor.execute(llmClient, prompt, model, tools)
 
                 val toolCall = responses.firstOrNull { it is Message.Tool.Call } as? Message.Tool.Call
                 if (toolCall == null) {
@@ -141,8 +140,7 @@ class LumenAgent(
 
             while (iterations < MAX_TOOL_ITERATIONS) {
                 val prompt = Prompt(conversationMessages, "lumen-chat", LLMParams())
-                val toolDescriptors = tools.map { it.descriptor }
-                val responses = llmClient.execute(prompt, model, toolDescriptors)
+                val responses = RetryExecutor.execute(llmClient, prompt, model, tools)
 
                 val toolCall = responses.firstOrNull { it is Message.Tool.Call } as? Message.Tool.Call
                 if (toolCall == null) {
@@ -285,7 +283,7 @@ class LumenAgent(
                 "lumen-title",
                 LLMParams(),
             )
-            val responses = llmClient.execute(prompt, model, emptyList())
+            val responses = RetryExecutor.execute(llmClient, prompt, model, emptyList())
             val title = responses.firstOrNull()?.content?.trim()?.removeSurrounding("\"")
             if (title.isNullOrBlank() || title.length > MAX_TITLE_LENGTH) null else title
         } catch (_: Exception) {

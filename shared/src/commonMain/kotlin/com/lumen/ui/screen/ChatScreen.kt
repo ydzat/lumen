@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandLess
@@ -150,11 +151,26 @@ private fun ConversationListScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "No conversations yet. Tap + to start one.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.ChatBubbleOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "No conversations yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Tap + to start one.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         } else {
             LazyColumn(
@@ -551,6 +567,10 @@ private fun ConversationChatScreen(
         if (isIngesting || isLoading || documentManager == null) return
         scope.launch {
             val file = pickFile(listOf(".pdf", ".txt", ".md")) ?: return@launch
+            if (file.bytes.size > MAX_UPLOAD_SIZE_BYTES) {
+                snackbarHostState.showSnackbar("File too large (max 50 MB)")
+                return@launch
+            }
             isIngesting = true
             uiItems.add(ChatUiItem.StatusInfo("Uploading ${file.name}..."))
             try {
@@ -1027,3 +1047,4 @@ private fun DocumentListDialog(
 }
 
 private const val TYPEWRITER_DELAY_MS = 20L
+private const val MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024

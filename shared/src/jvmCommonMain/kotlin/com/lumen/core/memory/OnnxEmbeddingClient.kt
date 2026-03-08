@@ -14,14 +14,29 @@ class OnnxEmbeddingClient(
     private val resourceLoader: ModelResourceLoader,
 ) : EmbeddingClient, Closeable {
 
+    @Volatile
+    private var available = true
+
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
 
-    private val session: OrtSession by lazy {
-        env.createSession(resourceLoader.getModelPath())
+    private val session: OrtSession? by lazy {
+        try {
+            env.createSession(resourceLoader.getModelPath())
+        } catch (e: Exception) {
+            System.err.println("WARNING: ONNX model failed to load, memory features disabled: ${e.message}")
+            available = false
+            null
+        }
     }
 
-    private val tokenizer: HuggingFaceTokenizer by lazy {
-        HuggingFaceTokenizer.newInstance(Path.of(resourceLoader.getTokenizerPath()))
+    private val tokenizer: HuggingFaceTokenizer? by lazy {
+        try {
+            HuggingFaceTokenizer.newInstance(Path.of(resourceLoader.getTokenizerPath()))
+        } catch (e: Exception) {
+            System.err.println("WARNING: Tokenizer failed to load, memory features disabled: ${e.message}")
+            available = false
+            null
+        }
     }
 
     override suspend fun embed(text: String): FloatArray {
@@ -31,7 +46,13 @@ class OnnxEmbeddingClient(
     override suspend fun embedBatch(texts: List<String>): List<FloatArray> {
         if (texts.isEmpty()) return emptyList()
 
-        val encodings = texts.map { tokenizer.encode(it) }
+        val tok = tokenizer
+        val sess = session
+        if (!available || tok == null || sess == null) {
+            return texts.map { FloatArray(EMBEDDING_DIMENSIONS) }
+        }
+
+        val encodings = texts.map { tok.encode(it) }
         val maxLen = encodings.maxOf { it.ids.size }
         val batchSize = texts.size
 
@@ -60,7 +81,7 @@ class OnnxEmbeddingClient(
         )
 
         return try {
-            val results = session.run(inputs)
+            val results = sess.run(inputs)
             try {
                 @Suppress("UNCHECKED_CAST")
                 val output = results[0].value as Array<Array<FloatArray>>
@@ -79,8 +100,8 @@ class OnnxEmbeddingClient(
     }
 
     override fun close() {
-        session.close()
-        tokenizer.close()
+        session?.close()
+        tokenizer?.close()
     }
 
     companion object {
