@@ -202,7 +202,7 @@ If no meaningful cross-project connection exists, output: {"title": "", "descrip
         val allArticles = db.articleBox.query()
             .notEqual(Article_.title, "", StringOrder.CASE_SENSITIVE)
             .build()
-            .use { it.find() }
+            .use { it.find(0, TEXT_SEARCH_SCAN_LIMIT.toLong()) }
 
         return allArticles
             .filter { article ->
@@ -216,6 +216,7 @@ If no meaningful cross-project connection exists, output: {"title": "", "descrip
         internal const val MIN_PROJECTS = 2
         internal const val MAX_KEYWORDS = 10
         private const val ARTICLE_SEARCH_LIMIT = 10
+        private const val TEXT_SEARCH_SCAN_LIMIT = 1000
         private const val ARTICLE_SUMMARY_MAX = 200
 
         private val json = Json { ignoreUnknownKeys = true }
