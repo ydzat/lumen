@@ -185,4 +185,79 @@ class SourceManagerTest {
 
         assertEquals(countAfterSeed, manager.listAll().size)
     }
+
+    @Test
+    fun recordFailure_incrementsFailuresAndSetsError() {
+        val source = manager.add(Source(name = "Failing", url = "https://example.com/feed", type = "RSS"))
+
+        val failed = manager.recordFailure(source.id, "Connection timeout")
+
+        assertNotNull(failed)
+        assertEquals(1, failed.consecutiveFailures)
+        assertEquals("Connection timeout", failed.lastError)
+        assertTrue(failed.nextRetryAt > 0)
+    }
+
+    @Test
+    fun recordFailure_incrementsOnMultipleCalls() {
+        val source = manager.add(Source(name = "Failing", url = "https://example.com/feed", type = "RSS"))
+
+        manager.recordFailure(source.id, "Error 1")
+        val failed2 = manager.recordFailure(source.id, "Error 2")
+
+        assertNotNull(failed2)
+        assertEquals(2, failed2.consecutiveFailures)
+        assertEquals("Error 2", failed2.lastError)
+    }
+
+    @Test
+    fun recordSuccess_resetsFailureState() {
+        val source = manager.add(Source(name = "Recovering", url = "https://example.com/feed", type = "RSS"))
+        manager.recordFailure(source.id, "Temporary error")
+
+        val recovered = manager.recordSuccess(source.id)
+
+        assertNotNull(recovered)
+        assertEquals(0, recovered.consecutiveFailures)
+        assertEquals("", recovered.lastError)
+        assertEquals(0L, recovered.nextRetryAt)
+        assertTrue(recovered.lastFetchedAt > 0)
+    }
+
+    @Test
+    fun recordFailure_returnsNullForMissingId() {
+        assertNull(manager.recordFailure(999L, "error"))
+    }
+
+    @Test
+    fun recordSuccess_returnsNullForMissingId() {
+        assertNull(manager.recordSuccess(999L))
+    }
+
+    @Test
+    fun listRetryable_excludesCooldownSources() {
+        val source = manager.add(Source(name = "Healthy", url = "https://example.com/1", type = "RSS"))
+        manager.add(Source(
+            name = "In Cooldown",
+            url = "https://example.com/2",
+            type = "RSS",
+            nextRetryAt = System.currentTimeMillis() + 3600000,
+        ))
+
+        val retryable = manager.listRetryable()
+
+        assertEquals(1, retryable.size)
+        assertEquals(source.id, retryable[0].id)
+    }
+
+    @Test
+    fun listRetryable_excludesDisabledSources() {
+        manager.add(Source(name = "Disabled", url = "https://example.com/1", type = "RSS", enabled = false))
+        manager.add(Source(name = "Enabled", url = "https://example.com/2", type = "RSS"))
+
+        val retryable = manager.listRetryable()
+
+        assertEquals(1, retryable.size)
+        assertEquals("Enabled", retryable[0].name)
+    }
 }

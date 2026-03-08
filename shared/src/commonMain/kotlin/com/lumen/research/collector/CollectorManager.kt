@@ -218,8 +218,8 @@ class CollectorManager(
     }
 
     private suspend fun fetchViaDataSources(context: FetchContext): Pair<List<Article>, List<String>> {
-        val allSources = sourceManager!!.listEnabled()
-        val sourcesByType = allSources.groupBy { SourceType.fromString(it.type) }
+        val retryableSources = sourceManager!!.listRetryable()
+        val sourcesByType = retryableSources.groupBy { SourceType.fromString(it.type) }
 
         val results = coroutineScope {
             sourcesByType.map { (type, sources) ->
@@ -227,16 +227,28 @@ class CollectorManager(
                     try {
                         val ds = dataSources.find { it.type == type }
                         if (ds != null) {
-                            ds.fetch(sources, context)
+                            val result = ds.fetch(sources, context)
+                            // Record outcome per source-type group (not per individual source)
+                            for (source in sources) {
+                                if (result.errors.isEmpty()) {
+                                    sourceManager.recordSuccess(source.id)
+                                } else {
+                                    sourceManager.recordFailure(
+                                        source.id,
+                                        result.errors.firstOrNull() ?: "Unknown error",
+                                    )
+                                }
+                            }
+                            result
                         } else {
                             DataFetchResult(emptyList(), listOf("No handler for source type: $type"), type)
                         }
                     } catch (e: Exception) {
-                        DataFetchResult(
-                            emptyList(),
-                            listOf("${type.name}: ${e.message ?: e::class.simpleName}"),
-                            type,
-                        )
+                        val errorMsg = "${type.name}: ${e.message ?: e::class.simpleName}"
+                        for (source in sources) {
+                            sourceManager.recordFailure(source.id, errorMsg)
+                        }
+                        DataFetchResult(emptyList(), listOf(errorMsg), type)
                     }
                 }
             }.awaitAll()
