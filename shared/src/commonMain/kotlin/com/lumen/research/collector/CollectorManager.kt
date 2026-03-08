@@ -28,6 +28,7 @@ class CollectorManager(
     private val projectManager: ProjectManager? = null,
     private val sparkEngine: SparkEngine? = null,
     private val articleArchiver: ArticleArchiver? = null,
+    private val contentEnricher: ContentEnricher? = null,
 ) {
 
     suspend fun runPipeline(
@@ -76,6 +77,18 @@ class CollectorManager(
             }
         }
 
+        // 2c. Content enrichment (fetch full article for RSS with empty content)
+        val enrichedCount = if (contentEnricher != null && afterDedup.isNotEmpty()) {
+            progress?.onProgress(PipelineStage.ENRICHING, 0, afterDedup.size)
+            try {
+                contentEnricher.enrichAll(afterDedup)
+            } catch (_: Exception) {
+                0
+            }
+        } else {
+            0
+        }
+
         // 3. Embed ALL (free operation)
         progress?.onProgress(PipelineStage.EMBEDDING, 0, afterDedup.size)
         val embeddedCount = processUnembedded()
@@ -112,6 +125,7 @@ class CollectorManager(
 
         return PipelineResult(
             fetched = fetchedArticles.size,
+            enriched = enrichedCount,
             embedded = embeddedCount,
             analyzed = analyzedCount,
             scored = scoredCount,
@@ -261,6 +275,7 @@ class CollectorManager(
 
 data class PipelineResult(
     val fetched: Int,
+    val enriched: Int = 0,
     val embedded: Int = 0,
     val analyzed: Int,
     val scored: Int,

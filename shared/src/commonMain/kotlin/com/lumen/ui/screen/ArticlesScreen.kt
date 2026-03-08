@@ -869,6 +869,7 @@ private fun ArticleDetailDialog(
 private fun formatStageName(stage: PipelineStage): String = when (stage) {
     PipelineStage.FETCHING -> "Fetching articles..."
     PipelineStage.DEDUPLICATING -> "Removing duplicates..."
+    PipelineStage.ENRICHING -> "Fetching full articles..."
     PipelineStage.EMBEDDING -> "Generating embeddings..."
     PipelineStage.SCORING -> "Scoring relevance..."
     PipelineStage.ANALYZING -> "Analyzing articles..."

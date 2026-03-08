@@ -25,6 +25,7 @@ import com.lumen.research.analyzer.RelevanceScorer
 import com.lumen.research.collector.ArxivApiDataSource
 import com.lumen.research.archiver.ArticleArchiver
 import com.lumen.research.collector.CollectorManager
+import com.lumen.research.collector.ContentEnricher
 import com.lumen.research.collector.DataSource
 import com.lumen.research.collector.Deduplicator
 import com.lumen.research.collector.GitHubReleasesDataSource
@@ -126,6 +127,18 @@ val researchModule = module {
     }
     single<List<DataSource>> { listOf(get<RssDataSource>(), get<ArxivApiDataSource>(), get<ScholarDataSource>(), get<GitHubReleasesDataSource>()) }
     single {
+        ContentEnricher(
+            httpClient = HttpClient {
+                install(HttpTimeout) {
+                    connectTimeoutMillis = 30_000
+                    requestTimeoutMillis = 60_000
+                    socketTimeoutMillis = 60_000
+                }
+            },
+            db = get(),
+        )
+    }
+    single {
         CollectorManager(
             articleAnalyzer = get(),
             relevanceScorer = get(),
@@ -137,6 +150,7 @@ val researchModule = module {
             projectManager = getOrNull(),
             sparkEngine = getOrNull(),
             articleArchiver = getOrNull(),
+            contentEnricher = getOrNull(),
         )
     }
 }

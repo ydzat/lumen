@@ -72,6 +72,7 @@ kotlin {
                 implementation(libs.onnxruntime)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.pdfbox)
+                implementation(libs.readability4j)
             }
         }
 
