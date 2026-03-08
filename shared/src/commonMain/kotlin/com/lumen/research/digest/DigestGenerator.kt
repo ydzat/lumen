@@ -10,7 +10,10 @@ import com.lumen.core.memory.LlmCall
 import com.lumen.core.util.extractJsonObject
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.util.dateToEpochRange
+import com.lumen.research.ProjectManager
 import com.lumen.research.parseCsvSet
+import com.lumen.research.spark.Spark
+import com.lumen.research.spark.SparkEngine
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -19,6 +22,8 @@ class DigestGenerator(
     private val db: LumenDatabase,
     private val llmCall: LlmCall,
     private val memoryManager: MemoryManager?,
+    private val sparkEngine: SparkEngine? = null,
+    private val projectManager: ProjectManager? = null,
 ) {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -36,6 +41,24 @@ class DigestGenerator(
             generateDigestContent(articles, date)
         }
 
+        val sections = if (projectId == 0L && articles.isNotEmpty()) {
+            buildProjectSections(articles)
+        } else {
+            emptyList()
+        }
+
+        val sparks = if (projectId == 0L && sparkEngine != null && projectManager != null) {
+            try {
+                val activeProjects = projectManager.listAll().filter { it.isActive }
+                val insights = sparkEngine.generateInsights(activeProjects)
+                buildSparkSections(insights)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+
         val digest = Digest(
             date = date,
             title = title,
@@ -43,6 +66,8 @@ class DigestGenerator(
             sourceBreakdown = json.encodeToString(sourceBreakdown),
             projectId = projectId,
             createdAt = System.currentTimeMillis(),
+            projectSections = if (sections.isNotEmpty()) json.encodeToString(sections) else "",
+            sparks = if (sparks.isNotEmpty()) json.encodeToString(sparks) else "",
         )
         val id = db.digestBox.put(digest)
 
@@ -68,7 +93,7 @@ class DigestGenerator(
             .build()
             .use { it.find() }
         return articles
-            .filter { it.aiSummary.isNotBlank() }
+            .filter { it.aiSummary.isNotBlank() || it.summary.isNotBlank() }
             .filter { projectId == 0L || projectId.toString() in parseCsvSet(it.projectIds) }
             .sortedByDescending { it.aiRelevanceScore }
     }
@@ -85,6 +110,46 @@ class DigestGenerator(
                 )
             }
             .sortedByDescending { it.count }
+    }
+
+    internal fun buildProjectSections(articles: List<Article>): List<ProjectSection> {
+        val projectNames = projectManager?.listAll()?.associate { it.id to it.name } ?: emptyMap()
+        val grouped = mutableMapOf<Long, MutableList<Article>>()
+
+        for (article in articles) {
+            val pids = parseCsvSet(article.projectIds).mapNotNull { it.toLongOrNull() }
+            if (pids.isEmpty()) {
+                grouped.getOrPut(0L) { mutableListOf() }.add(article)
+            } else {
+                for (pid in pids) {
+                    grouped.getOrPut(pid) { mutableListOf() }.add(article)
+                }
+            }
+        }
+
+        return grouped.map { (pid, arts) ->
+            val sortedArts = arts.sortedByDescending { it.aiRelevanceScore }
+            val highlights = sortedArts.take(MAX_PROJECT_HIGHLIGHTS).joinToString("\n") { article ->
+                val summary = article.aiSummary.ifBlank { article.summary }
+                "- ${article.title}: ${summary.take(HIGHLIGHT_SUMMARY_MAX)}"
+            }
+            ProjectSection(
+                projectId = pid,
+                projectName = projectNames[pid] ?: if (pid == 0L) "Unassigned" else "Project $pid",
+                highlights = highlights,
+                articleCount = arts.size,
+            )
+        }.sortedByDescending { it.articleCount }
+    }
+
+    internal fun buildSparkSections(sparks: List<Spark>): List<SparkSection> {
+        return sparks.map { spark ->
+            SparkSection(
+                title = spark.title,
+                description = spark.description,
+                relatedKeywords = spark.relatedKeywords,
+            )
+        }
     }
 
     private suspend fun generateDigestContent(articles: List<Article>, date: String): Pair<String, String> {
@@ -107,8 +172,9 @@ class DigestGenerator(
         sb.appendLine()
         for ((i, article) in articles.withIndex()) {
             sb.appendLine("${i + 1}. [Score: ${"%.2f".format(article.aiRelevanceScore)}] ${article.title}")
-            if (article.aiSummary.isNotBlank()) {
-                sb.appendLine("   Summary: ${article.aiSummary}")
+            val summary = article.aiSummary.ifBlank { article.summary }
+            if (summary.isNotBlank()) {
+                sb.appendLine("   Summary: $summary")
             }
             if (article.keywords.isNotBlank()) {
                 sb.appendLine("   Keywords: ${article.keywords}")
@@ -140,9 +206,10 @@ class DigestGenerator(
             appendLine("Top articles by relevance:")
             appendLine()
             for ((i, article) in articles.take(10).withIndex()) {
+                val summary = article.aiSummary.ifBlank { article.summary }
                 appendLine("${i + 1}. ${article.title}")
-                if (article.aiSummary.isNotBlank()) {
-                    appendLine("   ${article.aiSummary}")
+                if (summary.isNotBlank()) {
+                    appendLine("   $summary")
                 }
             }
         }.trim()
@@ -176,9 +243,26 @@ class DigestGenerator(
         val topArticle: String = "",
     )
 
+    @Serializable
+    internal data class ProjectSection(
+        val projectId: Long = 0,
+        val projectName: String = "",
+        val highlights: String = "",
+        val articleCount: Int = 0,
+    )
+
+    @Serializable
+    internal data class SparkSection(
+        val title: String = "",
+        val description: String = "",
+        val relatedKeywords: List<String> = emptyList(),
+    )
+
     companion object {
         internal const val MAX_ARTICLES_FOR_PROMPT = 20
         internal const val MAX_MEMORY_CONTENT_LENGTH = 1000
+        private const val MAX_PROJECT_HIGHLIGHTS = 5
+        private const val HIGHLIGHT_SUMMARY_MAX = 200
 
         internal const val SYSTEM_PROMPT = """You are a research digest generator. Summarize the day's research articles into a concise daily briefing.
 
@@ -188,6 +272,7 @@ class DigestGenerator(
 2. Write highlights summarizing the most important findings and themes (3-5 paragraphs).
 3. Identify emerging trends or patterns across articles (1-2 paragraphs).
 4. Focus on substance, not article counts or metadata.
+5. If articles span multiple research projects, synthesize insights across all projects.
 
 ## Output Format
 

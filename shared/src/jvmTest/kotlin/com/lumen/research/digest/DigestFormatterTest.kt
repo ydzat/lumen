@@ -15,12 +15,16 @@ class DigestFormatterTest {
         date: String = "2026-03-07",
         content: String = "Today's research focused on transformer architectures.",
         sourceBreakdown: String = "",
+        projectSections: String = "",
+        sparks: String = "",
     ): Digest {
         return Digest(
             title = title,
             date = date,
             content = content,
             sourceBreakdown = sourceBreakdown,
+            projectSections = projectSections,
+            sparks = sparks,
             createdAt = System.currentTimeMillis(),
         )
     }
@@ -80,5 +84,82 @@ class DigestFormatterTest {
 
         assertTrue(output.contains("First paragraph."))
         assertTrue(!output.contains("Second paragraph."))
+    }
+
+    @Test
+    fun format_withProjectSections_rendersProjectHeaders() {
+        val sections = Json.encodeToString(listOf(
+            DigestGenerator.ProjectSection(1, "AI Research", "- Paper A: Summary A", 2),
+            DigestGenerator.ProjectSection(2, "HPC", "- Paper B: Summary B", 1),
+        ))
+        val digest = makeDigest(projectSections = sections)
+        val output = formatter.format(digest)
+
+        assertTrue(output.contains("## Project Sections"))
+        assertTrue(output.contains("### AI Research (2 articles)"))
+        assertTrue(output.contains("- Paper A: Summary A"))
+        assertTrue(output.contains("### HPC (1 articles)"))
+        assertTrue(output.contains("- Paper B: Summary B"))
+    }
+
+    @Test
+    fun format_withSparks_rendersSparksSection() {
+        val sparks = Json.encodeToString(listOf(
+            DigestGenerator.SparkSection("Cross Insight", "AI meets HPC", listOf("parallel", "scheduling")),
+        ))
+        val digest = makeDigest(sparks = sparks)
+        val output = formatter.format(digest)
+
+        assertTrue(output.contains("## Spark Insights"))
+        assertTrue(output.contains("**Cross Insight**"))
+        assertTrue(output.contains("AI meets HPC"))
+        assertTrue(output.contains("[parallel, scheduling]"))
+    }
+
+    @Test
+    fun format_withBothSectionsAndSparks_rendersAll() {
+        val sections = Json.encodeToString(listOf(
+            DigestGenerator.ProjectSection(1, "AI Research", "- Paper A: Summary", 1),
+        ))
+        val sparks = Json.encodeToString(listOf(
+            DigestGenerator.SparkSection("Insight", "Description", listOf("kw1")),
+        ))
+        val breakdown = Json.encodeToString(listOf(
+            DigestGenerator.SourceBreakdownEntry("arXiv", 1, "Paper A"),
+        ))
+        val digest = makeDigest(
+            projectSections = sections,
+            sparks = sparks,
+            sourceBreakdown = breakdown,
+        )
+        val output = formatter.format(digest)
+
+        assertTrue(output.contains("## Highlights"))
+        assertTrue(output.contains("## Project Sections"))
+        assertTrue(output.contains("## Spark Insights"))
+        assertTrue(output.contains("## Source Breakdown"))
+        val highlightsPos = output.indexOf("## Highlights")
+        val sectionsPos = output.indexOf("## Project Sections")
+        val sparksPos = output.indexOf("## Spark Insights")
+        val breakdownPos = output.indexOf("## Source Breakdown")
+        assertTrue(highlightsPos < sectionsPos)
+        assertTrue(sectionsPos < sparksPos)
+        assertTrue(sparksPos < breakdownPos)
+    }
+
+    @Test
+    fun format_withEmptyProjectSections_skipsSection() {
+        val digest = makeDigest(projectSections = "")
+        val output = formatter.format(digest)
+
+        assertTrue(!output.contains("## Project Sections"))
+    }
+
+    @Test
+    fun format_withEmptySparks_skipsSection() {
+        val digest = makeDigest(sparks = "")
+        val output = formatter.format(digest)
+
+        assertTrue(!output.contains("## Spark Insights"))
     }
 }

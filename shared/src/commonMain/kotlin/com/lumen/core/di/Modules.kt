@@ -81,7 +81,7 @@ val researchModule = module {
     single { ProjectManager(get(), get()) }
     single { ArticleAnalyzer(get(), get(), get()) }
     single { RelevanceScorer(get(), getOrNull()) }
-    single { DigestGenerator(get(), get(), getOrNull()) }
+    single { DigestGenerator(get(), get(), getOrNull(), getOrNull(), getOrNull()) }
     single { DigestFormatter() }
     single { Deduplicator(get()) }
     single { SparkEngine(get(), get(), getOrNull()) }
