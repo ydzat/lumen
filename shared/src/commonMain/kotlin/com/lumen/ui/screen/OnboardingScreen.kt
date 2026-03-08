@@ -51,7 +51,6 @@ import com.lumen.companion.agent.LumenAgent
 import com.lumen.companion.persona.PersonaManager
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.config.LlmConfig
-import com.lumen.core.database.entities.Source
 import com.lumen.research.collector.SourceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -354,8 +353,10 @@ private fun PersonaStep(
     onComplete: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    personaManager.seedBuiltInPersonas()
-    val personas = remember { personaManager.listAll() }
+    val personas = remember {
+        personaManager.seedBuiltInPersonas()
+        personaManager.listAll()
+    }
     var selectedId by remember { mutableStateOf(personas.firstOrNull { it.isActive }?.id ?: 0L) }
 
     Text("Step 3/3: Choose Your Persona", style = MaterialTheme.typography.titleMedium)
