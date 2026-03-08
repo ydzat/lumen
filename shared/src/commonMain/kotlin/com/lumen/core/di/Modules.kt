@@ -22,6 +22,8 @@ import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
 import com.lumen.research.collector.CollectorManager
+import com.lumen.research.collector.DataSource
+import com.lumen.research.collector.Deduplicator
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.collector.SourceManager
 import com.lumen.research.digest.DigestFormatter
@@ -76,7 +78,22 @@ val researchModule = module {
     single { RelevanceScorer(get(), getOrNull()) }
     single { DigestGenerator(get(), get(), getOrNull()) }
     single { DigestFormatter() }
-    single { CollectorManager(get(), get(), get(), get()) }
+    single { Deduplicator(get()) }
+    single<List<DataSource>> { emptyList() }
+    single {
+        CollectorManager(
+            rssCollector = get(),
+            articleAnalyzer = get(),
+            relevanceScorer = get(),
+            digestGenerator = get(),
+            dataSources = get(),
+            sourceManager = get(),
+            deduplicator = get(),
+            embeddingClient = getOrNull(),
+            db = getOrNull(),
+            projectManager = getOrNull(),
+        )
+    }
 }
 
 val documentModule = module {

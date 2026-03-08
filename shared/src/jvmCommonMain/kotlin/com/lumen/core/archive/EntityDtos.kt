@@ -25,6 +25,10 @@ data class SourceDto(
     val enabled: Boolean,
     val lastFetchedAt: Long,
     val createdAt: Long,
+    val config: String = "",
+    val lastError: String = "",
+    val consecutiveFailures: Int = 0,
+    val nextRetryAt: Long = 0,
 )
 
 @Serializable
@@ -45,6 +49,14 @@ data class ArticleDto(
     val aiRelevanceScore: Float,
     val keywords: String,
     val projectIds: String,
+    val doi: String = "",
+    val arxivId: String = "",
+    val analysisStatus: String = "",
+    val aiTranslation: String = "",
+    val citationCount: Int = 0,
+    val influentialCitationCount: Int = 0,
+    val archived: Boolean = false,
+    val sourceType: String = "",
 )
 
 @Serializable
@@ -56,6 +68,8 @@ data class DigestDto(
     val sourceBreakdown: String,
     val projectId: Long,
     val createdAt: Long,
+    val sparks: String = "",
+    val projectSections: String = "",
 )
 
 @Serializable
@@ -148,29 +162,35 @@ data class MemoryEntryDto(
 fun Source.toDto() = SourceDto(
     id, name, url, type, category, description, icon,
     refreshIntervalMin, enabled, lastFetchedAt, createdAt,
+    config, lastError, consecutiveFailures, nextRetryAt,
 )
 
 fun SourceDto.toEntity() = Source(
     0, name, url, type, category, description, icon,
     refreshIntervalMin, enabled, lastFetchedAt, createdAt,
+    config, lastError, consecutiveFailures, nextRetryAt,
 )
 
 fun Article.toDto() = ArticleDto(
     id, sourceId, title, url, summary, content, author,
     publishedAt, fetchedAt, readAt, starred, embedding.toList(),
     aiSummary, aiRelevanceScore, keywords, projectIds,
+    doi, arxivId, analysisStatus, aiTranslation,
+    citationCount, influentialCitationCount, archived, sourceType,
 )
 
 fun ArticleDto.toEntity(sourceId: Long = this.sourceId, projectIds: String = this.projectIds) = Article(
     0, sourceId, title, url, summary, content, author,
     publishedAt, fetchedAt, readAt, starred, embedding.toFloatArray(),
     aiSummary, aiRelevanceScore, keywords, projectIds,
+    doi, arxivId, analysisStatus, aiTranslation,
+    citationCount, influentialCitationCount, archived, sourceType,
 )
 
-fun Digest.toDto() = DigestDto(id, date, title, content, sourceBreakdown, projectId, createdAt)
+fun Digest.toDto() = DigestDto(id, date, title, content, sourceBreakdown, projectId, createdAt, sparks, projectSections)
 
 fun DigestDto.toEntity(projectId: Long = this.projectId) = Digest(
-    0, date, title, content, sourceBreakdown, projectId, createdAt,
+    0, date, title, content, sourceBreakdown, projectId, createdAt, sparks, projectSections,
 )
 
 fun ResearchProject.toDto() = ResearchProjectDto(

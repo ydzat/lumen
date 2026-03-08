@@ -16,6 +16,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class CollectorManagerTest {
 
@@ -51,6 +52,28 @@ class CollectorManagerTest {
         return CollectorManager(rssCollector, analyzer, scorer, digestGenerator)
     }
 
+    private fun createManagerWithDataSources(
+        dataSources: List<DataSource> = emptyList(),
+    ): CollectorManager {
+        val rssCollector = RssCollector(db)
+        val analyzer = ArticleAnalyzer(db, noopLlmCall, fakeEmbeddingClient)
+        val scorer = RelevanceScorer(db, null)
+        val digestGenerator = DigestGenerator(db, noopLlmCall, null)
+        val sourceManager = SourceManager(db)
+        val deduplicator = Deduplicator(db)
+        return CollectorManager(
+            rssCollector = rssCollector,
+            articleAnalyzer = analyzer,
+            relevanceScorer = scorer,
+            digestGenerator = digestGenerator,
+            dataSources = dataSources,
+            sourceManager = sourceManager,
+            deduplicator = deduplicator,
+            embeddingClient = fakeEmbeddingClient,
+            db = db,
+        )
+    }
+
     @Test
     fun runPipeline_withNoSources_returnsZeroCounts() = runBlocking {
         val manager = createManager()
@@ -65,7 +88,7 @@ class CollectorManagerTest {
     @Test
     fun runPipeline_withSourceButNoNetwork_returnsZeroFetched() = runBlocking {
         db.sourceBox.put(
-            Source(name = "Unreachable", url = "https://invalid.test.example/feed", type = "rss")
+            Source(name = "Unreachable", url = "https://invalid.test.example/feed", type = "RSS")
         )
         val manager = createManager()
 
@@ -95,5 +118,97 @@ class CollectorManagerTest {
         assertEquals(0, result.fetched)
         assertEquals(0, result.analyzed)
         assertEquals(0, result.scored)
+    }
+
+    @Test
+    fun runPipeline_withEmptyDataSources_fallsBackToRssCollector() = runBlocking {
+        val manager = createManagerWithDataSources(emptyList())
+
+        val result = manager.runPipeline()
+
+        assertEquals(0, result.fetched)
+        assertEquals(0, result.analyzed)
+    }
+
+    @Test
+    fun runPipeline_withMockDataSource_dispatchesByType() = runBlocking {
+        val fakeArticle = Article(
+            title = "Fake arXiv Paper",
+            url = "https://arxiv.org/abs/2401.00001",
+            sourceType = "ARXIV_API",
+        )
+        val fakeDataSource = object : DataSource {
+            override val type = SourceType.ARXIV_API
+            override val displayName = "Fake arXiv"
+            override suspend fun fetch(sources: List<Source>, context: FetchContext): DataFetchResult {
+                return DataFetchResult(listOf(fakeArticle), emptyList(), SourceType.ARXIV_API)
+            }
+        }
+
+        db.sourceBox.put(Source(name = "arXiv", url = "https://arxiv.org", type = "ARXIV_API"))
+        val manager = createManagerWithDataSources(listOf(fakeDataSource))
+
+        val result = manager.runPipeline(analysisBudget = 1)
+
+        assertEquals(1, result.fetched)
+    }
+
+    @Test
+    fun runPipeline_withDeduplicator_removesDuplicates() = runBlocking {
+        val fakeDataSource = object : DataSource {
+            override val type = SourceType.ARXIV_API
+            override val displayName = "Fake"
+            override suspend fun fetch(sources: List<Source>, context: FetchContext): DataFetchResult {
+                return DataFetchResult(
+                    listOf(
+                        Article(title = "Paper A", url = "https://example.com/same"),
+                        Article(title = "Paper B", url = "https://example.com/same"),
+                    ),
+                    emptyList(),
+                    SourceType.ARXIV_API,
+                )
+            }
+        }
+
+        db.sourceBox.put(Source(name = "arXiv", url = "https://arxiv.org", type = "ARXIV_API"))
+        val manager = createManagerWithDataSources(listOf(fakeDataSource))
+
+        val result = manager.runPipeline(analysisBudget = 5)
+
+        assertEquals(2, result.fetched)
+        assertEquals(1, result.duplicatesRemoved)
+    }
+
+    @Test
+    fun fetchOnly_returnsArticlesWithoutAnalysis() = runBlocking {
+        val manager = createManager()
+
+        val articles = manager.fetchOnly()
+
+        assertTrue(articles.isEmpty())
+    }
+
+    @Test
+    fun buildFetchContext_withNoProjects_returnsEmptyKeywords() {
+        val manager = createManagerWithDataSources()
+
+        val context = manager.buildFetchContext()
+
+        assertTrue(context.activeProjects.isEmpty())
+        assertTrue(context.keywords.isEmpty())
+        assertEquals(100, context.remainingBudget)
+    }
+
+    @Test
+    fun runPipeline_progressCallbackInvoked() = runBlocking {
+        val manager = createManager()
+        val stages = mutableListOf<PipelineStage>()
+
+        manager.runPipeline(progress = PipelineProgress { stage, _, _ -> stages.add(stage) })
+
+        assertTrue(stages.contains(PipelineStage.FETCHING))
+        assertTrue(stages.contains(PipelineStage.ANALYZING))
+        assertTrue(stages.contains(PipelineStage.SCORING))
+        assertTrue(stages.contains(PipelineStage.DIGESTING))
     }
 }

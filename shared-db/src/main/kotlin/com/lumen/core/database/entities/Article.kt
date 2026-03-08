@@ -23,7 +23,15 @@ data class Article(
     var aiSummary: String = "",
     var aiRelevanceScore: Float = 0f,
     var keywords: String = "",
-    var projectIds: String = ""
+    var projectIds: String = "",
+    @Index var doi: String = "",
+    @Index var arxivId: String = "",
+    @Index var analysisStatus: String = "",
+    var aiTranslation: String = "",
+    var citationCount: Int = 0,
+    var influentialCitationCount: Int = 0,
+    var archived: Boolean = false,
+    var sourceType: String = "",
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -43,12 +51,22 @@ data class Article(
             aiSummary == other.aiSummary &&
             aiRelevanceScore == other.aiRelevanceScore &&
             keywords == other.keywords &&
-            projectIds == other.projectIds
+            projectIds == other.projectIds &&
+            doi == other.doi &&
+            arxivId == other.arxivId &&
+            analysisStatus == other.analysisStatus &&
+            aiTranslation == other.aiTranslation &&
+            citationCount == other.citationCount &&
+            influentialCitationCount == other.influentialCitationCount &&
+            archived == other.archived &&
+            sourceType == other.sourceType
     }
 
     override fun hashCode(): Int {
         var result = id.hashCode()
         result = 31 * result + url.hashCode()
+        result = 31 * result + doi.hashCode()
+        result = 31 * result + arxivId.hashCode()
         result = 31 * result + embedding.contentHashCode()
         return result
     }
