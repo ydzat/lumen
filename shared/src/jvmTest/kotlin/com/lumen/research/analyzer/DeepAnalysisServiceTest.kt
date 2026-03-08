@@ -226,6 +226,64 @@ Content 3.
         }
     }
 
+    // --- analyzeSingleSection tests ---
+
+    @Test
+    fun analyzeSingleSection_createsAndAnalyzes() = runBlocking {
+        val articleId = db.articleBox.put(
+            Article(
+                title = "Test Paper",
+                url = "https://example.com/paper",
+                content = """## Introduction
+Introduction content here.
+
+## Methods
+Methods content here.
+
+## Results
+Results content here.
+""",
+            ),
+        )
+
+        val service = DeepAnalysisService(db, fakeLlmCall)
+        val result = service.analyzeSingleSection(articleId, 0)
+
+        assertNotNull(result)
+        assertEquals(0, result.sectionIndex)
+        assertTrue(result.aiCommentary.isNotBlank())
+
+        // Verify sections were created in DB
+        val allSections = service.getSections(articleId)
+        assertTrue(allSections.isNotEmpty())
+    }
+
+    @Test
+    fun analyzeSingleSection_skipsAlreadyAnalyzed() = runBlocking {
+        val articleId = db.articleBox.put(
+            Article(
+                title = "Test Paper",
+                url = "https://example.com/paper",
+                content = """## Introduction
+Introduction content here.
+
+## Methods
+Methods content here.
+""",
+            ),
+        )
+
+        val service = DeepAnalysisService(db, fakeLlmCall)
+        service.analyzeSingleSection(articleId, 0)
+        val callsAfterFirst = llmCallCount
+
+        // Second call should not invoke LLM again
+        service.analyzeSingleSection(articleId, 0)
+        // Only structure call + analysis call from the first invocation
+        // Second invocation should not add any LLM calls
+        assertEquals(callsAfterFirst, llmCallCount)
+    }
+
     // --- Parsing unit tests ---
 
     @Test

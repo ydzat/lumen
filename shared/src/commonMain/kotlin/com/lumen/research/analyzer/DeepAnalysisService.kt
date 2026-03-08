@@ -65,6 +65,26 @@ class DeepAnalysisService(
         return null
     }
 
+    suspend fun analyzeSingleSection(articleId: Long, sectionIndex: Int): ArticleSection? {
+        val article = db.articleBox.get(articleId) ?: return null
+
+        // Ensure sections exist in DB
+        var sections = getSections(articleId)
+        if (sections.isEmpty()) {
+            val content = article.content.ifBlank { article.summary }
+            if (content.isBlank()) return null
+            sections = extractStructure(articleId, article.title, content)
+        }
+
+        val section = sections.firstOrNull { it.sectionIndex == sectionIndex } ?: return null
+
+        // Skip if already analyzed
+        if (section.aiCommentary.isNotBlank()) return section
+
+        analyzeSection(section, article.title, article.keywords)
+        return db.articleSectionBox.get(section.id)
+    }
+
     fun getSections(articleId: Long): List<ArticleSection> {
         return db.articleSectionBox.query()
             .equal(ArticleSection_.articleId, articleId)
@@ -142,7 +162,7 @@ class DeepAnalysisService(
 
     // --- Content splitting ---
 
-    internal fun splitIntoSections(content: String): List<LocalSection> {
+    fun splitIntoSections(content: String): List<LocalSection> {
         val sections = mutableListOf<LocalSection>()
 
         // Try heading-based splitting first
@@ -232,7 +252,7 @@ class DeepAnalysisService(
 
     // --- Data classes ---
 
-    internal data class LocalSection(
+    data class LocalSection(
         val heading: String,
         val content: String,
         val level: Int,

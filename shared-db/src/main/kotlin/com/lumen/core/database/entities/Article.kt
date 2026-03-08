@@ -32,7 +32,7 @@ data class Article(
     var influentialCitationCount: Int = 0,
     var archived: Boolean = false,
     var sourceType: String = "",
-    var deepAnalysisStatus: String = "",
+    var deepAnalysisStatus: String? = "",
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
