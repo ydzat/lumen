@@ -31,6 +31,7 @@ import com.lumen.research.collector.ScholarDataSource
 import com.lumen.research.collector.SourceManager
 import com.lumen.research.digest.DigestFormatter
 import com.lumen.research.digest.DigestGenerator
+import com.lumen.research.spark.SparkEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import org.koin.core.module.Module
@@ -82,6 +83,7 @@ val researchModule = module {
     single { DigestGenerator(get(), get(), getOrNull()) }
     single { DigestFormatter() }
     single { Deduplicator(get()) }
+    single { SparkEngine(get(), get(), getOrNull()) }
     single {
         ArxivApiDataSource(
             db = get(),
@@ -130,6 +132,7 @@ val researchModule = module {
             embeddingClient = getOrNull(),
             db = getOrNull(),
             projectManager = getOrNull(),
+            sparkEngine = getOrNull(),
         )
     }
 }

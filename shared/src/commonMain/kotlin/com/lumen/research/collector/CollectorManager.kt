@@ -12,6 +12,7 @@ import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
 import com.lumen.research.digest.DigestGenerator
 import com.lumen.research.parseCsvSet
+import com.lumen.research.spark.SparkEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -26,16 +27,29 @@ class CollectorManager(
     private val embeddingClient: EmbeddingClient? = null,
     private val db: LumenDatabase? = null,
     private val projectManager: ProjectManager? = null,
+    private val sparkEngine: SparkEngine? = null,
 ) {
 
     suspend fun runPipeline(
         analysisBudget: Int = 10,
         progress: PipelineProgress? = null,
     ): PipelineResult {
+        // 0. Generate spark keywords (cross-project discovery)
+        val sparkKeywords = if (sparkEngine != null && projectManager != null) {
+            val activeProjects = projectManager.listAll().filter { it.isActive }
+            try {
+                sparkEngine.generateSearchKeywords(activeProjects)
+            } catch (_: Exception) {
+                emptySet()
+            }
+        } else {
+            emptySet()
+        }
+
         // 1. Fetch
         progress?.onProgress(PipelineStage.FETCHING, 0, 1)
         val (fetchedArticles, fetchErrors) = if (dataSources.isNotEmpty() && sourceManager != null) {
-            fetchViaDataSources(buildFetchContext())
+            fetchViaDataSources(buildFetchContext(sparkKeywords = sparkKeywords))
         } else {
             emptyList<Article>() to emptyList<String>()
         }
@@ -86,6 +100,7 @@ class CollectorManager(
             scoredArticles = scored,
             fetchErrors = fetchErrors,
             duplicatesRemoved = duplicatesRemoved,
+            sparkKeywords = sparkKeywords,
         )
     }
 
@@ -189,4 +204,5 @@ data class PipelineResult(
     val scoredArticles: List<Article> = emptyList(),
     val fetchErrors: List<String> = emptyList(),
     val duplicatesRemoved: Int = 0,
+    val sparkKeywords: Set<String> = emptySet(),
 )
