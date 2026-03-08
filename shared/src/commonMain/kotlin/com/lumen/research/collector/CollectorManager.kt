@@ -4,6 +4,7 @@ import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.Article_
 import com.lumen.core.database.entities.Digest
+import io.objectbox.query.QueryBuilder.StringOrder
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
@@ -106,7 +107,7 @@ class CollectorManager(
     suspend fun processUnembedded(): Int {
         if (db == null || embeddingClient == null) return 0
         val unembedded = db.articleBox.query()
-            .equal(Article_.analysisStatus, "", io.objectbox.query.QueryBuilder.StringOrder.CASE_SENSITIVE)
+            .equal(Article_.analysisStatus, "", StringOrder.CASE_SENSITIVE)
             .build()
             .use { it.find() }
             .filter { it.embedding.isEmpty() }

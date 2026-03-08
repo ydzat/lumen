@@ -84,10 +84,13 @@ class Deduplicator(private val db: LumenDatabase) {
     }
 
     companion object {
+        private val NON_ALNUM_PATTERN = Regex("[^a-z0-9\\s]")
+        private val MULTI_SPACE_PATTERN = Regex("\\s+")
+
         internal fun normalizeTitle(title: String): String {
             return title.lowercase().trim()
-                .replace(Regex("[^a-z0-9\\s]"), "")
-                .replace(Regex("\\s+"), " ")
+                .replace(NON_ALNUM_PATTERN, "")
+                .replace(MULTI_SPACE_PATTERN, " ")
         }
 
         internal fun buildTitleAuthorKey(article: Article): String? {
