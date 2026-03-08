@@ -12,5 +12,6 @@ data class Message(
     var content: String = "",
     var toolName: String = "",
     var toolArgs: String = "",
+    var toolCallId: String = "",
     @Index var createdAt: Long = 0,
 )

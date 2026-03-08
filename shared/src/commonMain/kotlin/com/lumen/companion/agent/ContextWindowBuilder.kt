@@ -73,13 +73,13 @@ private fun Message.toKoogMessage(): KoogMessage {
         "assistant" -> KoogMessage.Assistant(content, ResponseMetaInfo.Empty)
         "system" -> KoogMessage.System(content, RequestMetaInfo.Empty)
         "tool_call" -> KoogMessage.Tool.Call(
-            id = id.toString(),
+            id = toolCallId.ifEmpty { id.toString() },
             tool = toolName,
             content = toolArgs,
             metaInfo = ResponseMetaInfo.Empty,
         )
         "tool_result" -> KoogMessage.Tool.Result(
-            id = id.toString(),
+            id = toolCallId.ifEmpty { id.toString() },
             tool = toolName,
             content = content,
             metaInfo = RequestMetaInfo.Empty,

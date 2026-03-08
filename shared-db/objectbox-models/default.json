@@ -482,7 +482,7 @@
     },
     {
       "id": "9:2801143473473493661",
-      "lastPropertyId": "7:7814182496302732131",
+      "lastPropertyId": "8:1656850096214542991",
       "name": "Message",
       "properties": [
         {
@@ -524,6 +524,11 @@
           "indexId": "17:7105360363318078108",
           "type": 6,
           "flags": 8
+        },
+        {
+          "id": "8:1656850096214542991",
+          "name": "toolCallId",
+          "type": 9
         }
       ],
       "relations": []

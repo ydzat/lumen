@@ -94,15 +94,18 @@ class LumenAgent(
                 val prompt = Prompt(conversationMessages, "lumen-chat", LLMParams())
                 val responses = RetryExecutor.execute(llmClient, prompt, model, tools)
 
-                val toolCall = responses.firstOrNull { it is Message.Tool.Call } as? Message.Tool.Call
-                if (toolCall == null) {
+                val toolCalls = responses.filterIsInstance<Message.Tool.Call>()
+                if (toolCalls.isEmpty()) {
                     val responseText = responses.firstOrNull()?.content ?: ""
                     return ChatResult.Success(responseText)
                 }
 
-                val toolResult = executeToolCall(toolCall)
-                conversationMessages.add(toolCall)
-                conversationMessages.add(toolResult)
+                // Add all tool calls first (they form one assistant message),
+                // then all results — DeepSeek requires all tool_call_ids to have
+                // response messages before the next turn.
+                val toolResults = toolCalls.map { call -> executeToolCall(call) }
+                conversationMessages.addAll(toolCalls)
+                conversationMessages.addAll(toolResults)
                 iterations++
             }
 
@@ -142,8 +145,8 @@ class LumenAgent(
                 val prompt = Prompt(conversationMessages, "lumen-chat", LLMParams())
                 val responses = RetryExecutor.execute(llmClient, prompt, model, tools)
 
-                val toolCall = responses.firstOrNull { it is Message.Tool.Call } as? Message.Tool.Call
-                if (toolCall == null) {
+                val toolCalls = responses.filterIsInstance<Message.Tool.Call>()
+                if (toolCalls.isEmpty()) {
                     val responseText = responses.firstOrNull()?.content ?: ""
                     cm.addMessage(conversationId, "assistant", responseText)
                     emit(ChatEvent.AssistantResponse(responseText))
@@ -156,15 +159,20 @@ class LumenAgent(
                     break
                 }
 
-                emit(ChatEvent.ToolCallStart(toolCall.tool, toolCall.content))
-                val toolResult = executeToolCall(toolCall)
-                emit(ChatEvent.ToolCallResult(toolCall.tool, toolResult.content))
-
-                cm.addMessage(conversationId, "tool_call", "", toolCall.tool, toolCall.content)
-                cm.addMessage(conversationId, "tool_result", toolResult.content, toolCall.tool)
-
-                conversationMessages.add(toolCall)
-                conversationMessages.add(toolResult)
+                // Execute all tool calls and collect results
+                val toolResults = toolCalls.map { call ->
+                    emit(ChatEvent.ToolCallStart(call.tool, call.content))
+                    val result = executeToolCall(call)
+                    emit(ChatEvent.ToolCallResult(call.tool, result.content))
+                    val callId = call.id ?: ""
+                    cm.addMessage(conversationId, "tool_call", "", call.tool, call.content, callId)
+                    cm.addMessage(conversationId, "tool_result", result.content, call.tool, toolCallId = callId)
+                    result
+                }
+                // Add all calls first, then all results — DeepSeek requires
+                // all tool_call_ids to have response messages before next turn.
+                conversationMessages.addAll(toolCalls)
+                conversationMessages.addAll(toolResults)
                 iterations++
             }
 
@@ -321,12 +329,17 @@ class LumenAgent(
                 append(toolDescriptions)
                 append("\nUse these tools when contextually appropriate.")
             }
+
+            append("\n\nFormat your responses using Markdown when appropriate (headings, lists, bold, code blocks, etc.).")
         }
         return sections
     }
 
     companion object {
-        internal const val DEFAULT_SYSTEM_PROMPT = "You are Lumen, a personal AI assistant."
+        internal const val DEFAULT_SYSTEM_PROMPT =
+            "You are Lumen, a personal AI assistant and companion. " +
+                "You help with research and daily conversations alike, remembering things across sessions. " +
+                "Be warm but informative, adapting your tone to the context."
         internal const val DEFAULT_TITLE = "New conversation"
         private const val MAX_TOOL_ITERATIONS = 5
         private const val AUTO_RECALL_LIMIT = 3

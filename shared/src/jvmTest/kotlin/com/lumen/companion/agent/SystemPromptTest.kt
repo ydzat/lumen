@@ -13,7 +13,7 @@ class SystemPromptTest {
     fun buildSystemPrompt_withNoPersona_usesDefault() {
         val agent = LumenAgent(config = LlmConfig(apiKey = "test"))
         try {
-            assertEquals(LumenAgent.DEFAULT_SYSTEM_PROMPT, agent.systemPrompt)
+            assertTrue(agent.systemPrompt.startsWith(LumenAgent.DEFAULT_SYSTEM_PROMPT))
         } finally {
             agent.close()
         }
@@ -43,7 +43,7 @@ class SystemPromptTest {
         )
         val agent = LumenAgent(config = LlmConfig(apiKey = "test"), persona = persona)
         try {
-            assertEquals("You are a test bot.", agent.systemPrompt)
+            assertTrue(agent.systemPrompt.startsWith("You are a test bot."))
             assertFalse(agent.systemPrompt.contains("Available tools:"))
         } finally {
             agent.close()

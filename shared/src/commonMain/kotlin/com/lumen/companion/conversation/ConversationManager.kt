@@ -63,6 +63,7 @@ class ConversationManager(private val db: LumenDatabase) {
         content: String,
         toolName: String = "",
         toolArgs: String = "",
+        toolCallId: String = "",
     ): Message {
         val now = System.currentTimeMillis()
         val message = Message(
@@ -71,6 +72,7 @@ class ConversationManager(private val db: LumenDatabase) {
             content = content,
             toolName = toolName,
             toolArgs = toolArgs,
+            toolCallId = toolCallId,
             createdAt = now,
         )
         var id: Long = 0

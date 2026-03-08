@@ -89,6 +89,7 @@ data class MessageDto(
     val content: String,
     val toolName: String,
     val toolArgs: String,
+    val toolCallId: String = "",
     val createdAt: Long,
 )
 
@@ -186,10 +187,10 @@ fun ConversationDto.toEntity(personaId: Long = this.personaId, projectId: Long =
     0, title, personaId, projectId, messageCount, createdAt, updatedAt,
 )
 
-fun Message.toDto() = MessageDto(id, conversationId, role, content, toolName, toolArgs, createdAt)
+fun Message.toDto() = MessageDto(id, conversationId, role, content, toolName, toolArgs, toolCallId, createdAt)
 
 fun MessageDto.toEntity(conversationId: Long = this.conversationId) = Message(
-    0, conversationId, role, content, toolName, toolArgs, createdAt,
+    0, conversationId, role, content, toolName, toolArgs, toolCallId, createdAt,
 )
 
 fun Persona.toDto() = PersonaDto(id, name, systemPrompt, greeting, avatarEmoji, isBuiltIn, isActive, createdAt)
