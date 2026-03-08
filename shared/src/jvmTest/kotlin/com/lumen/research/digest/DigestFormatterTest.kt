@@ -98,7 +98,7 @@ class DigestFormatterTest {
         assertTrue(output.contains("## Project Sections"))
         assertTrue(output.contains("### AI Research (2 articles)"))
         assertTrue(output.contains("- Paper A: Summary A"))
-        assertTrue(output.contains("### HPC (1 articles)"))
+        assertTrue(output.contains("### HPC (1 article)"))
         assertTrue(output.contains("- Paper B: Summary B"))
     }
 

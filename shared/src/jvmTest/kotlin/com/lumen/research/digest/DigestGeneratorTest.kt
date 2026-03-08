@@ -315,10 +315,12 @@ class DigestGeneratorTest {
         seedArticle(sourceId, "Paper A", score = 0.9f)
         // Seed article matching spark keyword for text search
         db.articleBox.put(Article(
+            sourceId = sourceId,
             title = "Parallel AI Computing",
             summary = "Using parallel AI for HPC workloads",
             keywords = "parallel AI",
             aiSummary = "Parallel AI summary",
+            fetchedAt = testDateStartEpoch + 3600_000L,
         ))
 
         db.researchProjectBox.put(listOf(

@@ -26,7 +26,8 @@ class DigestFormatter {
             sb.appendLine("## Project Sections")
             sb.appendLine()
             for (section in sections) {
-                sb.appendLine("### ${section.projectName} (${section.articleCount} articles)")
+                val articleLabel = if (section.articleCount == 1) "article" else "articles"
+                sb.appendLine("### ${section.projectName} (${section.articleCount} $articleLabel)")
                 sb.appendLine()
                 if (section.highlights.isNotBlank()) {
                     sb.appendLine(section.highlights)
