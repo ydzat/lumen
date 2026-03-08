@@ -28,16 +28,7 @@ class RssDataSource(
             if (remainingBudget <= 0) break
 
             try {
-                val feedUrl = resolveFeedUrl(source.url)
-                val channel = rssParser.getRssChannel(feedUrl)
-                val articles = processChannel(channel, source)
-                    .take(remainingBudget)
-
-                if (articles.isNotEmpty()) {
-                    db.articleBox.put(articles)
-                }
-                db.sourceBox.put(source.copy(lastFetchedAt = System.currentTimeMillis()))
-
+                val articles = fetchAndPersist(source, remainingBudget)
                 allArticles.addAll(articles)
                 remainingBudget -= articles.size
             } catch (e: Exception) {
@@ -49,9 +40,13 @@ class RssDataSource(
     }
 
     suspend fun fetchSingle(source: Source): List<Article> {
+        return fetchAndPersist(source)
+    }
+
+    private suspend fun fetchAndPersist(source: Source, limit: Int = Int.MAX_VALUE): List<Article> {
         val feedUrl = resolveFeedUrl(source.url)
         val channel = rssParser.getRssChannel(feedUrl)
-        val articles = processChannel(channel, source)
+        val articles = processChannel(channel, source).take(limit)
         if (articles.isNotEmpty()) {
             db.articleBox.put(articles)
         }

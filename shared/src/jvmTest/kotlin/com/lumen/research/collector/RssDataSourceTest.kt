@@ -125,6 +125,42 @@ class RssDataSourceTest {
     }
 
     @Test
+    fun parseAndProcess_respectsBudgetViaTake() = runBlocking {
+        val source = Source(name = "Test Feed", url = "https://example.com/feed", type = "RSS")
+        val sourceId = db.sourceBox.put(source)
+        val savedSource = db.sourceBox.get(sourceId)
+
+        val articles = dataSource.parseAndProcess(SAMPLE_RSS_XML, savedSource)
+
+        val limited = articles.take(1)
+        assertEquals(1, limited.size)
+        assertEquals("Article One", limited[0].title)
+    }
+
+    @Test
+    fun fetch_withUnreachableSource_returnsError() = runBlocking {
+        val source = Source(name = "Bad Feed", url = "https://invalid.test.example/feed", type = "RSS")
+        db.sourceBox.put(source)
+        val savedSource = db.sourceBox.all.first()
+
+        val result = dataSource.fetch(listOf(savedSource), createContext())
+
+        assertTrue(result.articles.isEmpty())
+        assertEquals(1, result.errors.size)
+        assertTrue(result.errors[0].contains("Bad Feed"))
+        assertEquals(SourceType.RSS, result.sourceType)
+    }
+
+    @Test
+    fun fetch_withEmptySources_returnsEmpty() = runBlocking {
+        val result = dataSource.fetch(emptyList(), createContext())
+
+        assertTrue(result.articles.isEmpty())
+        assertTrue(result.errors.isEmpty())
+        assertEquals(SourceType.RSS, result.sourceType)
+    }
+
+    @Test
     fun type_isRss() {
         assertEquals(SourceType.RSS, dataSource.type)
     }
