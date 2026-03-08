@@ -22,6 +22,7 @@ import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
 import com.lumen.research.collector.ArxivApiDataSource
+import com.lumen.research.archiver.ArticleArchiver
 import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.DataSource
 import com.lumen.research.collector.Deduplicator
@@ -84,6 +85,7 @@ val researchModule = module {
     single { DigestFormatter() }
     single { Deduplicator(get()) }
     single { SparkEngine(get(), get(), getOrNull()) }
+    single { ArticleArchiver(get(), getOrNull()) }
     single {
         ArxivApiDataSource(
             db = get(),
@@ -133,6 +135,7 @@ val researchModule = module {
             db = getOrNull(),
             projectManager = getOrNull(),
             sparkEngine = getOrNull(),
+            articleArchiver = getOrNull(),
         )
     }
 }

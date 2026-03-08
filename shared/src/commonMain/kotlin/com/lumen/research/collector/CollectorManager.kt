@@ -10,6 +10,7 @@ import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
+import com.lumen.research.archiver.ArticleArchiver
 import com.lumen.research.digest.DigestGenerator
 import com.lumen.research.parseCsvSet
 import com.lumen.research.spark.SparkEngine
@@ -28,6 +29,7 @@ class CollectorManager(
     private val db: LumenDatabase? = null,
     private val projectManager: ProjectManager? = null,
     private val sparkEngine: SparkEngine? = null,
+    private val articleArchiver: ArticleArchiver? = null,
 ) {
 
     suspend fun runPipeline(
@@ -92,6 +94,19 @@ class CollectorManager(
             null
         }
 
+        // 6. Emergency archive (if storage exceeds limit)
+        val archivedCount = if (articleArchiver != null &&
+            articleArchiver.needsEmergencyArchive(ArticleArchiver.DEFAULT_MAX_ARTICLES)
+        ) {
+            try {
+                articleArchiver.emergencyArchive(ArticleArchiver.DEFAULT_MAX_ARTICLES).archived
+            } catch (_: Exception) {
+                0
+            }
+        } else {
+            0
+        }
+
         return PipelineResult(
             fetched = fetchedArticles.size,
             analyzed = analyzed.size,
@@ -101,6 +116,7 @@ class CollectorManager(
             fetchErrors = fetchErrors,
             duplicatesRemoved = duplicatesRemoved,
             sparkKeywords = sparkKeywords,
+            archivedCount = archivedCount,
         )
     }
 
@@ -205,4 +221,5 @@ data class PipelineResult(
     val fetchErrors: List<String> = emptyList(),
     val duplicatesRemoved: Int = 0,
     val sparkKeywords: Set<String> = emptySet(),
+    val archivedCount: Int = 0,
 )
