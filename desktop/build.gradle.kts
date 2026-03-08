@@ -24,10 +24,12 @@ compose.desktop {
         mainClass = "com.lumen.desktop.MainKt"
 
         nativeDistributions {
+            val appVersion = "0.1.0"
+
             targetFormats(TargetFormat.Msi, TargetFormat.Dmg, TargetFormat.Deb)
 
             packageName = "Lumen"
-            packageVersion = "0.1.0"
+            packageVersion = appVersion
             description = "Lumen — Personal AI Assistant"
             vendor = "Lumen Project"
 
@@ -41,13 +43,14 @@ compose.desktop {
 
             linux {
                 iconFile.set(project.file("src/main/resources/icons/lumen.png"))
-                debPackageVersion = "0.1.0"
+                debPackageVersion = appVersion
                 appCategory = "Utility"
             }
 
             macOS {
                 iconFile.set(project.file("src/main/resources/icons/lumen.icns"))
                 bundleID = "com.lumen.desktop"
+                // macOS DMG requires MAJOR > 0, so use 1.0.0 until app reaches v1
                 dmgPackageVersion = "1.0.0"
                 dmgPackageBuildVersion = "1.0.0"
             }
