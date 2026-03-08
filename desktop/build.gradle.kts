@@ -17,6 +17,8 @@ dependencies {
 
     implementation(libs.koin.core)
     implementation(libs.coroutines.core)
+    implementation(libs.coroutines.swing)
+    implementation(libs.slf4j.simple)
 }
 
 compose.desktop {

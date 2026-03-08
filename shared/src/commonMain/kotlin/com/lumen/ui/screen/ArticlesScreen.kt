@@ -60,12 +60,14 @@ import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
+import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.collector.AnalysisStatus
 import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.PipelineStage
 import com.lumen.research.parseCsvSet
 import com.lumen.ui.displaySourceType
 import com.lumen.ui.displaySourceTypeShort
+import com.lumen.ui.stripHtml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -84,6 +86,7 @@ fun ArticlesScreen() {
     val projectManager = koinInject<ProjectManager>()
     val collectorManager = koinInject<CollectorManager>()
     val memoryManager = getKoin().getOrNull<MemoryManager>()
+    val articleAnalyzer = koinInject<ArticleAnalyzer>()
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -99,6 +102,9 @@ fun ArticlesScreen() {
     var progressStage by remember { mutableStateOf("") }
     var progressDetail by remember { mutableStateOf("") }
     var selectedArticle by remember { mutableStateOf<Article?>(null) }
+    var detailArticle by remember { mutableStateOf<Article?>(null) }
+    var showAnalyzePrompt by remember { mutableStateOf(false) }
+    var isAnalyzing by remember { mutableStateOf(false) }
     var projectExpanded by remember { mutableStateOf(false) }
 
     // Initialize activeProjectId from DB once on first composition
@@ -406,6 +412,120 @@ fun ArticlesScreen() {
                 selectedArticle = updated
                 loadData()
             },
+            onViewDetails = {
+                if (article.analysisStatus == AnalysisStatus.ANALYZED) {
+                    detailArticle = article
+                    selectedArticle = null
+                } else {
+                    showAnalyzePrompt = true
+                }
+            },
+        )
+    }
+
+    // Analyze prompt for unanalyzed articles
+    if (showAnalyzePrompt) {
+        selectedArticle?.let { article ->
+            AlertDialog(
+                onDismissRequest = { showAnalyzePrompt = false },
+                title = { Text("Article Not Analyzed") },
+                text = {
+                    Text(
+                        "This article has not been analyzed by AI yet. " +
+                            "Would you like to analyze it now? This will generate " +
+                            "an AI summary and extract keywords.",
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showAnalyzePrompt = false
+                            isAnalyzing = true
+                            scope.launch {
+                                try {
+                                    val analyzed = withContext(Dispatchers.Default) {
+                                        articleAnalyzer.analyze(article)
+                                    }
+                                    detailArticle = analyzed
+                                    selectedArticle = null
+                                    loadData()
+                                    snackbarHostState.showSnackbar("Analysis complete")
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar(
+                                        "Analysis failed: ${e.message ?: "Unknown error"}"
+                                    )
+                                } finally {
+                                    isAnalyzing = false
+                                }
+                            }
+                        },
+                        enabled = !isAnalyzing,
+                    ) {
+                        if (isAnalyzing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Analyzing...")
+                        } else {
+                            Text("Analyze")
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showAnalyzePrompt = false
+                            detailArticle = selectedArticle
+                            selectedArticle = null
+                        },
+                    ) {
+                        Text("View Without Analysis")
+                    }
+                },
+            )
+        }
+    }
+
+    // Full detail screen
+    detailArticle?.let { article ->
+        ArticleDetailScreen(
+            article = article,
+            sourceName = sourceNames[article.sourceId] ?: "Unknown",
+            onBack = {
+                detailArticle = null
+                loadData()
+            },
+            onStarToggle = {
+                val updated = article.copy(starred = !article.starred)
+                db.articleBox.put(updated)
+                detailArticle = updated
+                if (updated.starred && memoryManager != null) {
+                    scope.launch {
+                        try {
+                            val content = buildString {
+                                append("Starred article: ${updated.title}.")
+                                if (updated.aiSummary.isNotBlank()) {
+                                    append(" Summary: ${updated.aiSummary}.")
+                                }
+                            }
+                            withContext(Dispatchers.Default) {
+                                memoryManager.store(
+                                    content = content.take(1000),
+                                    category = "research_interest",
+                                    source = "star",
+                                )
+                            }
+                        } catch (_: Exception) { }
+                    }
+                }
+            },
+            onArchiveToggle = {
+                val updated = article.copy(archived = !article.archived)
+                db.articleBox.put(updated)
+                detailArticle = updated
+            },
         )
     }
 }
@@ -428,7 +548,7 @@ private fun ArticleCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = article.title,
+                    text = stripHtml(article.title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                     maxLines = 2,
@@ -472,22 +592,13 @@ private fun ArticleCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    val statusLabel = when (article.analysisStatus) {
-                        AnalysisStatus.ANALYZED -> "Analyzed"
-                        AnalysisStatus.SCORED -> "Scored"
-                        AnalysisStatus.EMBEDDED -> "Embedded"
-                        else -> "New"
+                    if (article.analysisStatus == AnalysisStatus.ANALYZED) {
+                        Text(
+                            text = "Analyzed",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     }
-                    val statusColor = when (article.analysisStatus) {
-                        AnalysisStatus.ANALYZED -> MaterialTheme.colorScheme.primary
-                        AnalysisStatus.SCORED -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                    Text(
-                        text = statusLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = statusColor,
-                    )
                     if (article.archived) {
                         Text(
                             text = "Archived",
@@ -496,10 +607,18 @@ private fun ArticleCard(
                         )
                     }
                 }
-                if (article.aiSummary.isNotBlank()) {
+                // Show AI summary if analyzed, otherwise show stripped source summary
+                val previewText = if (article.aiSummary.isNotBlank()) {
+                    article.aiSummary
+                } else if (article.summary.isNotBlank()) {
+                    stripHtml(article.summary)
+                } else {
+                    null
+                }
+                if (previewText != null) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = article.aiSummary,
+                        text = previewText,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -527,29 +646,35 @@ private fun ArticleDetailDialog(
     sourceName: String,
     onDismiss: () -> Unit,
     onArchiveToggle: () -> Unit,
+    onViewDetails: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
+            TextButton(onClick = onViewDetails) {
+                Text("View Details")
             }
         },
         dismissButton = {
-            TextButton(onClick = onArchiveToggle) {
-                Icon(
-                    imageVector = if (article.archived) Icons.Default.Unarchive
-                    else Icons.Default.Archive,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(if (article.archived) "Restore" else "Archive")
+            Row {
+                TextButton(onClick = onArchiveToggle) {
+                    Icon(
+                        imageVector = if (article.archived) Icons.Default.Unarchive
+                        else Icons.Default.Archive,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (article.archived) "Restore" else "Archive")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Close")
+                }
             }
         },
         title = {
             Text(
-                text = article.title,
+                text = stripHtml(article.title),
                 style = MaterialTheme.typography.titleMedium,
             )
         },
@@ -557,20 +682,29 @@ private fun ArticleDetailDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // Author
+                if (article.author.isNotBlank()) {
+                    Text(
+                        text = article.author,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                // Source info
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Source: $sourceName",
+                        text = "$sourceName (${displaySourceType(article.sourceType)})",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
-                    if (article.sourceType.isNotBlank()) {
+                    if (article.publishedAt > 0) {
                         Text(
-                            text = displaySourceType(article.sourceType),
+                            text = formatEpochDate(article.publishedAt),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                    if (article.fetchedAt > 0) {
+                    } else if (article.fetchedAt > 0) {
                         Text(
                             text = formatEpochDate(article.fetchedAt),
                             style = MaterialTheme.typography.labelMedium,
@@ -579,6 +713,27 @@ private fun ArticleDetailDialog(
                     }
                 }
 
+                // Identifiers
+                if (article.doi.isNotBlank() || article.arxivId.isNotBlank()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (article.doi.isNotBlank()) {
+                            Text(
+                                text = "DOI: ${article.doi}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (article.arxivId.isNotBlank()) {
+                            Text(
+                                text = "arXiv: ${article.arxivId}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                // Metrics
                 if (article.aiRelevanceScore > 0f || article.citationCount > 0 || article.influentialCitationCount > 0) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (article.aiRelevanceScore > 0f) {
@@ -605,6 +760,17 @@ private fun ArticleDetailDialog(
                     }
                 }
 
+                // Abstract / Summary from source (HTML stripped)
+                if (article.summary.isNotBlank()) {
+                    Text(
+                        text = stripHtml(article.summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                // AI Summary
                 if (article.aiSummary.isNotBlank()) {
                     Text(
                         text = "AI Summary",
@@ -614,20 +780,15 @@ private fun ArticleDetailDialog(
                     Text(
                         text = article.aiSummary,
                         style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
 
+                // Keywords
                 if (article.keywords.isNotBlank()) {
                     Text(
                         text = "Keywords: ${article.keywords}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                if (article.url.isNotBlank()) {
-                    Text(
-                        text = "URL: ${article.url}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
