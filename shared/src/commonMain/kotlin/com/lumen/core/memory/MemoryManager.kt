@@ -43,9 +43,12 @@ class MemoryManager(
 
     suspend fun storeFromConversation(conversation: String): List<MemoryEntry> {
         val extracted = compressor.compress(conversation, System.currentTimeMillis())
-        return extracted.map { memory ->
-            val embedding = embeddingClient.embed(memory.content)
-            val now = System.currentTimeMillis()
+        if (extracted.isEmpty()) return emptyList()
+
+        val embeddings = embeddingClient.embedBatch(extracted.map { it.content })
+        val now = System.currentTimeMillis()
+
+        return extracted.zip(embeddings).map { (memory, embedding) ->
             val entry = MemoryEntry(
                 content = memory.content,
                 category = memory.category,

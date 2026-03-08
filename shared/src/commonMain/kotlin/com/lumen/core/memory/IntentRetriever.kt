@@ -52,10 +52,12 @@ class IntentRetriever(
         subQueries: List<String>,
         limit: Int,
     ): List<Pair<MemoryEntry, Float>> {
+        // Batch embed all sub-queries in one inference pass
+        val embeddings = embeddingClient.embedBatch(subQueries)
+
         return coroutineScope {
-            subQueries.map { subQuery ->
+            subQueries.zip(embeddings).map { (_, embedding) ->
                 async {
-                    val embedding = embeddingClient.embed(subQuery)
                     val results = database.memoryEntryBox.query()
                         .nearestNeighbors(MemoryEntry_.embedding, embedding, limit)
                         .build()

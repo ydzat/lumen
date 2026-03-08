@@ -69,7 +69,7 @@ kotlin {
         jvmMain {
             dependsOn(jvmCommonMain)
             dependencies {
-                implementation(libs.onnxruntime)
+                implementation(libs.onnxruntime.gpu)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.pdfbox)
                 implementation(libs.readability4j)

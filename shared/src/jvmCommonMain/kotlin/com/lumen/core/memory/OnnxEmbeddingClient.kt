@@ -8,6 +8,7 @@ import ai.onnxruntime.OrtSession
 import java.io.Closeable
 import java.nio.LongBuffer
 import java.nio.file.Path
+import kotlin.math.min
 import kotlin.math.sqrt
 
 class OnnxEmbeddingClient(
@@ -21,7 +22,16 @@ class OnnxEmbeddingClient(
 
     private val session: OrtSession? by lazy {
         try {
-            env.createSession(resourceLoader.getModelPath())
+            val opts = OrtSession.SessionOptions().apply {
+                setOptimizationLevel(OrtSession.SessionOptions.OptLevel.EXTENDED_OPT)
+                setIntraOpNumThreads(Runtime.getRuntime().availableProcessors().coerceAtMost(4))
+                try {
+                    addCUDA(0)
+                } catch (_: Exception) {
+                    // CUDA not available, CPU fallback
+                }
+            }
+            env.createSession(resourceLoader.getModelPath(), opts)
         } catch (e: Exception) {
             System.err.println("WARNING: ONNX model failed to load, memory features disabled: ${e.message}")
             available = false
@@ -52,8 +62,24 @@ class OnnxEmbeddingClient(
             return texts.map { FloatArray(EMBEDDING_DIMENSIONS) }
         }
 
+        // Process in chunks to bound memory usage
+        if (texts.size > BATCH_CHUNK_SIZE) {
+            return texts.chunked(BATCH_CHUNK_SIZE).flatMap { chunk ->
+                embedBatchInternal(chunk, tok, sess)
+            }
+        }
+
+        return embedBatchInternal(texts, tok, sess)
+    }
+
+    private fun embedBatchInternal(
+        texts: List<String>,
+        tok: HuggingFaceTokenizer,
+        sess: OrtSession,
+    ): List<FloatArray> {
         val encodings = texts.map { tok.encode(it) }
-        val maxLen = encodings.maxOf { it.ids.size }
+        // Cap sequence length to avoid excessive padding
+        val maxLen = min(encodings.maxOf { it.ids.size }, MAX_SEQ_LEN)
         val batchSize = texts.size
 
         val inputIds = LongArray(batchSize * maxLen)
@@ -62,7 +88,8 @@ class OnnxEmbeddingClient(
 
         for (i in encodings.indices) {
             val enc = encodings[i]
-            for (j in enc.ids.indices) {
+            val len = min(enc.ids.size, maxLen)
+            for (j in 0 until len) {
                 inputIds[i * maxLen + j] = enc.ids[j]
                 attentionMask[i * maxLen + j] = enc.attentionMask[j]
             }
@@ -87,7 +114,9 @@ class OnnxEmbeddingClient(
                 val output = results[0].value as Array<Array<FloatArray>>
 
                 (0 until batchSize).map { b ->
-                    meanPoolAndNormalize(output[b], encodings[b].attentionMask, maxLen)
+                    val effectiveLen = min(encodings[b].attentionMask.size, maxLen)
+                    val truncatedMask = encodings[b].attentionMask.copyOf(effectiveLen)
+                    meanPoolAndNormalize(output[b], truncatedMask, effectiveLen)
                 }
             } finally {
                 results.close()
@@ -105,6 +134,9 @@ class OnnxEmbeddingClient(
     }
 
     companion object {
+        internal const val MAX_SEQ_LEN = 128
+        internal const val BATCH_CHUNK_SIZE = 64
+
         internal fun meanPoolAndNormalize(
             tokenEmbeddings: Array<FloatArray>,
             attentionMask: LongArray,

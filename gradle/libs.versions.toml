@@ -65,6 +65,7 @@ androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref
 
 # ONNX Runtime (local embedding inference)
 onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
+onnxruntime-gpu = { module = "com.microsoft.onnxruntime:onnxruntime_gpu", version.ref = "onnxruntime" }
 onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 
 # DJL Tokenizers (HuggingFace tokenizer JNI bindings)
