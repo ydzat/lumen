@@ -466,4 +466,117 @@ class ContentEnricherTest {
         val allContent = sections.joinToString(" ") { it.content }
         assertTrue(allContent.isNotBlank())
     }
+
+    // --- Readability4J table preservation ---
+
+    @Test
+    fun extractContent_preservesArxivStyleTables() {
+        val enricher = createEnricher("")
+        val html = """
+            <html><head><title>Test Paper</title></head><body>
+            <article>
+                <h1>Test Paper Title</h1>
+                <p>This paper introduces a novel approach with extensive content to ensure
+                Readability4J considers this article substantial enough to extract.</p>
+                <p>We present results across multiple benchmarks demonstrating significant
+                improvements over existing state-of-the-art methods in the field.</p>
+                <section>
+                    <h2>1 Introduction</h2>
+                    <p>Introduction paragraph with enough content to make Readability4J happy.
+                    We describe our approach and the motivations behind our research direction.</p>
+                </section>
+                <section>
+                    <h2>2 Results</h2>
+                    <p>Our method achieves state-of-the-art performance on all benchmarks.</p>
+                    <figure class="ltx_table" id="S5.T1">
+                        <figcaption class="ltx_caption">
+                            <span class="ltx_tag">TABLE I: </span>Hyperparameters for Training
+                        </figcaption>
+                        <table class="ltx_tabular">
+                            <thead>
+                                <tr>
+                                    <th class="ltx_th">Hyperparameter</th>
+                                    <th class="ltx_th">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th class="ltx_th">Learning Rate</th>
+                                    <td class="ltx_td">0.001</td>
+                                </tr>
+                                <tr>
+                                    <th class="ltx_th">Batch Size</th>
+                                    <td class="ltx_td">32</td>
+                                </tr>
+                                <tr>
+                                    <th class="ltx_th">Epochs</th>
+                                    <td class="ltx_td">100</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </figure>
+                    <figure class="ltx_table" id="S5.T2">
+                        <figcaption class="ltx_caption">
+                            <span class="ltx_tag">TABLE II: </span>Ablation Study
+                        </figcaption>
+                        <table class="ltx_tabular">
+                            <thead>
+                                <tr>
+                                    <th class="ltx_th">Method</th>
+                                    <th class="ltx_th">Accuracy</th>
+                                    <th class="ltx_th">F1 Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="ltx_td">Baseline</td>
+                                    <td class="ltx_td">85.2</td>
+                                    <td class="ltx_td">83.1</td>
+                                </tr>
+                                <tr>
+                                    <td class="ltx_td">Ours</td>
+                                    <td class="ltx_td">92.7</td>
+                                    <td class="ltx_td">91.3</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </figure>
+                </section>
+                <section>
+                    <h2>3 Conclusion</h2>
+                    <p>We have demonstrated the effectiveness of our approach through extensive
+                    experiments. Future work includes scaling to larger datasets.</p>
+                </section>
+            </article>
+            </body></html>
+        """.trimIndent()
+
+        val result = enricher.extractContent("https://arxiv.org/html/2603.05504v1", html)
+        assertNotNull(result, "extractContent should return non-null")
+
+        assertTrue(result.contains("<table", ignoreCase = true), "Table elements should be preserved after extraction")
+        assertTrue(result.contains("<figure", ignoreCase = true), "Figure wrapper should be preserved")
+        assertTrue(result.contains("<figcaption", ignoreCase = true), "Figcaption should be preserved")
+    }
+
+    @Test
+    fun extractContent_realArxivPage_preservesTables() {
+        val enricher = createEnricher("")
+        val arxivFile = File("/tmp/arxiv_page.html")
+        if (!arxivFile.exists()) return // Skip if page not fetched
+
+        val html = arxivFile.readText()
+        val result = enricher.extractContent("https://arxiv.org/html/2603.05504v1", html)
+        assertNotNull(result, "extractContent should return non-null for real arXiv page")
+
+        assertTrue(result.contains("<table", ignoreCase = true), "Should contain table elements")
+        assertTrue(result.contains("TABLE I"), "Should contain TABLE I caption")
+        assertTrue(result.contains("TABLE II"), "Should contain TABLE II caption")
+        assertTrue(result.contains("Hyperparameters"), "Should contain Hyperparameters text")
+
+        // Verify the tables have actual content (not just empty shells)
+        val tablePattern = Regex("<table[^>]*>.*?</table>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+        val tables = tablePattern.findAll(result).toList()
+        assertTrue(tables.size >= 3, "Should have at least 3 table elements (equation + TABLE I + TABLE II)")
+    }
 }

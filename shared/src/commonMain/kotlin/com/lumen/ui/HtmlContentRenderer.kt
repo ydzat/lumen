@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -120,12 +123,17 @@ fun HtmlContentRenderer(
                 }
 
                 is HtmlBlock.Table -> {
+                    val borderColor = MaterialTheme.colorScheme.outlineVariant
+                    val headerBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                    val colCount = maxOf(
+                        block.headerRow.size,
+                        block.rows.maxOfOrNull { it.size } ?: 0,
+                    )
+
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(codeBackground.copy(alpha = 0.5f))
-                            .padding(8.dp),
+                            .padding(vertical = 4.dp),
                     ) {
                         if (block.caption.isNotBlank()) {
                             Text(
@@ -140,37 +148,56 @@ fun HtmlContentRenderer(
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState()),
                         ) {
-                            Column {
+                            Column(
+                                modifier = Modifier
+                                    .border(0.5.dp, borderColor, RoundedCornerShape(4.dp))
+                                    .clip(RoundedCornerShape(4.dp)),
+                            ) {
                                 if (block.headerRow.isNotEmpty()) {
                                     Row(
-                                        modifier = Modifier.height(IntrinsicSize.Min),
+                                        modifier = Modifier
+                                            .height(IntrinsicSize.Min)
+                                            .background(headerBg),
                                     ) {
-                                        block.headerRow.forEach { cell ->
+                                        block.headerRow.forEachIndexed { idx, cell ->
+                                            val annotated = buildStyledText(cell, linkColor)
                                             Text(
-                                                text = cell,
+                                                text = annotated,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier = Modifier
-                                                    .width(140.dp)
-                                                    .padding(4.dp),
+                                                    .widthIn(min = 60.dp, max = 300.dp)
+                                                    .width(IntrinsicSize.Max)
+                                                    .padding(horizontal = 8.dp, vertical = 6.dp),
                                             )
+                                            if (idx < colCount - 1) {
+                                                VerticalDivider(borderColor)
+                                            }
                                         }
                                     }
-                                    HorizontalDivider()
+                                    HorizontalDivider(color = borderColor)
                                 }
-                                block.rows.forEach { row ->
+                                block.rows.forEachIndexed { rowIdx, row ->
                                     Row(
                                         modifier = Modifier.height(IntrinsicSize.Min),
                                     ) {
-                                        row.forEach { cell ->
+                                        row.forEachIndexed { idx, cell ->
+                                            val annotated = buildStyledText(cell, linkColor)
                                             Text(
-                                                text = cell,
+                                                text = annotated,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 modifier = Modifier
-                                                    .width(140.dp)
-                                                    .padding(4.dp),
+                                                    .widthIn(min = 60.dp, max = 300.dp)
+                                                    .width(IntrinsicSize.Max)
+                                                    .padding(horizontal = 8.dp, vertical = 6.dp),
                                             )
+                                            if (idx < colCount - 1) {
+                                                VerticalDivider(borderColor)
+                                            }
                                         }
+                                    }
+                                    if (rowIdx < block.rows.size - 1) {
+                                        HorizontalDivider(color = borderColor)
                                     }
                                 }
                             }
@@ -261,7 +288,11 @@ internal sealed class HtmlBlock {
     data class Heading(val level: Int, val text: String) : HtmlBlock()
     data class Paragraph(val inlineElements: List<InlineElement>) : HtmlBlock()
     data class Image(val src: String, val alt: String, val caption: String = "") : HtmlBlock()
-    data class Table(val caption: String, val headerRow: List<String>, val rows: List<List<String>>) : HtmlBlock()
+    data class Table(
+        val caption: String,
+        val headerRow: List<List<InlineElement>>,
+        val rows: List<List<List<InlineElement>>>,
+    ) : HtmlBlock()
     data class ListBlock(val ordered: Boolean, val items: List<List<InlineElement>>) : HtmlBlock()
     data class Blockquote(val text: String) : HtmlBlock()
     data class CodeBlock(val code: String) : HtmlBlock()
@@ -478,18 +509,16 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
                     stripTags(it.groupValues[1]).trim()
                 } ?: ""
                 val tableRows = TABLE_ROW_PATTERN.findAll(tableHtml).toList()
-                val headerRow = mutableListOf<String>()
-                val dataRows = mutableListOf<List<String>>()
+                val headerRow = mutableListOf<List<InlineElement>>()
+                val dataRows = mutableListOf<List<List<InlineElement>>>()
                 for (row in tableRows) {
                     val rowHtml = row.groupValues[1]
                     val headerCells = TABLE_HEADER_CELL_PATTERN.findAll(rowHtml).toList()
                     if (headerCells.isNotEmpty() && headerRow.isEmpty()) {
-                        headerRow.addAll(headerCells.map {
-                            decodeEntities(stripTags(it.groupValues[1])).trim()
-                        })
+                        headerRow.addAll(headerCells.map { parseInlineElements(it.groupValues[1].trim()) })
                     } else {
                         val cells = TABLE_DATA_CELL_PATTERN.findAll(rowHtml).map {
-                            decodeEntities(stripTags(it.groupValues[1])).trim()
+                            parseInlineElements(it.groupValues[1].trim())
                         }.toList()
                         if (cells.isNotEmpty()) {
                             dataRows.add(cells)
@@ -500,13 +529,14 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
                 // (arXiv wraps display equations in <table> with padding cells)
                 if (headerRow.isEmpty() && dataRows.size == 1) {
                     val cells = dataRows[0]
-                    val nonEmpty = cells.filter { it.isNotBlank() }
+                    val nonEmpty = cells.filter { inlines -> inlines.any { it is InlineElement.Text && it.text.isNotBlank() || it !is InlineElement.Text } }
+                    val cellTexts = cells.map { inlines -> inlines.filterIsInstance<InlineElement.Text>().joinToString("") { it.text }.trim() }
                     if (nonEmpty.size <= 2 && cells.size >= 3 &&
-                        cells.count { it.isBlank() } >= cells.size / 2
+                        cellTexts.count { it.isBlank() } >= cells.size / 2
                     ) {
-                        val text = nonEmpty.joinToString("  ")
-                        if (text.isNotBlank()) {
-                            blocks.add(HtmlBlock.Paragraph(listOf(InlineElement.Text(text))))
+                        val merged = nonEmpty.flatten()
+                        if (merged.isNotEmpty()) {
+                            blocks.add(HtmlBlock.Paragraph(merged))
                         }
                         continue
                     }
@@ -531,18 +561,16 @@ internal fun parseHtmlToBlocks(html: String): List<HtmlBlock> {
                         stripTags(it.groupValues[1]).trim()
                     } ?: figCaption
                     val tableRows = TABLE_ROW_PATTERN.findAll(tableHtml).toList()
-                    val headerRow = mutableListOf<String>()
-                    val dataRows = mutableListOf<List<String>>()
+                    val headerRow = mutableListOf<List<InlineElement>>()
+                    val dataRows = mutableListOf<List<List<InlineElement>>>()
                     for (row in tableRows) {
                         val rowHtml = row.groupValues[1]
                         val headerCells = TABLE_HEADER_CELL_PATTERN.findAll(rowHtml).toList()
                         if (headerCells.isNotEmpty() && headerRow.isEmpty()) {
-                            headerRow.addAll(headerCells.map {
-                                decodeEntities(stripTags(it.groupValues[1])).trim()
-                            })
+                            headerRow.addAll(headerCells.map { parseInlineElements(it.groupValues[1].trim()) })
                         } else {
                             val cells = TABLE_DATA_CELL_PATTERN.findAll(rowHtml).map {
-                                decodeEntities(stripTags(it.groupValues[1])).trim()
+                                parseInlineElements(it.groupValues[1].trim())
                             }.toList()
                             if (cells.isNotEmpty()) {
                                 dataRows.add(cells)
@@ -667,6 +695,16 @@ internal fun parseInlineElements(html: String): List<InlineElement> {
 }
 
 // --- Rendering helpers ---
+
+@Composable
+private fun VerticalDivider(color: androidx.compose.ui.graphics.Color) {
+    Spacer(
+        Modifier
+            .fillMaxHeight()
+            .width(0.5.dp)
+            .background(color),
+    )
+}
 
 @Composable
 private fun buildStyledText(

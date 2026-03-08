@@ -111,12 +111,59 @@ class ContentEnricher(
 
     internal fun extractContent(url: String, html: String): String? {
         return try {
+            // Extract table figures from original HTML before Readability4J strips them.
+            // Readability4J removes <table> elements inside <figure> tags, losing
+            // scientific tables (e.g. arXiv's <figure class="ltx_table">).
+            val originalTableFigures = extractTableFigures(html)
+
             val readability = Readability4J(url, html)
             val parsed = readability.parse()
-            parsed.content?.takeIf { it.isNotBlank() }
+            var content = parsed.content?.takeIf { it.isNotBlank() } ?: return null
+
+            // Re-inject stripped table content into empty figure shells
+            if (originalTableFigures.isNotEmpty()) {
+                content = restoreTableFigures(content, originalTableFigures)
+            }
+
+            content
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * Extracts full <figure> blocks that contain <table> from the original HTML.
+     * Returns a map of figure id -> full figure HTML (with table intact).
+     */
+    internal fun extractTableFigures(html: String): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        for (match in FIGURE_WITH_TABLE_PATTERN.findAll(html)) {
+            val figureHtml = match.value
+            val id = FIGURE_ID_PATTERN.find(figureHtml)?.groupValues?.get(1) ?: continue
+            // Only include figures that actually contain a <table>
+            if (figureHtml.contains("<table", ignoreCase = true)) {
+                result[id] = figureHtml
+            }
+        }
+        return result
+    }
+
+    /**
+     * Replaces empty figure shells (where Readability4J stripped the table)
+     * with the original complete figure+table HTML.
+     */
+    internal fun restoreTableFigures(content: String, originals: Map<String, String>): String {
+        var result = content
+        for ((id, originalFigure) in originals) {
+            // Readability4J leaves behind: <figure id="X"><figcaption>...</figcaption></figure>
+            // Replace the empty shell with the original full figure
+            val shellPattern = Regex(
+                """<figure\s[^>]*id\s*=\s*"${Regex.escape(id)}"[^>]*>.*?</figure>""",
+                setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE),
+            )
+            result = shellPattern.replace(result, originalFigure)
+        }
+        return result
     }
 
     internal fun persistSections(articleId: Long, htmlContent: String) {
@@ -162,5 +209,13 @@ class ContentEnricher(
         internal val ENRICHABLE_SOURCE_TYPES = setOf("RSS", "ARXIV_API")
 
         private val ARXIV_ID_PATTERN = Regex("""arxiv\.org/abs/(\d+\.\d+)""")
+
+        // Matches <figure ...> blocks that contain <table> (greedy but bounded by </figure>)
+        // Uses a non-greedy match to handle nested structures
+        private val FIGURE_WITH_TABLE_PATTERN = Regex(
+            """<figure\b[^>]*>(?:(?!</figure>).)*<table\b.*?</table>.*?</figure>""",
+            setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE),
+        )
+        private val FIGURE_ID_PATTERN = Regex("""id\s*=\s*"([^"]+)"""", RegexOption.IGNORE_CASE)
     }
 }
