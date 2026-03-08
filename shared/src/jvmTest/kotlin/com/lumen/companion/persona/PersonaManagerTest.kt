@@ -42,15 +42,20 @@ class PersonaManagerTest {
         manager.seedBuiltInPersonas()
 
         val personas = manager.listAll()
-        assertEquals(2, personas.size)
+        assertEquals(3, personas.size)
 
-        val research = personas.find { it.name == PersonaManager.RESEARCH_ASSISTANT_NAME }
-        assertNotNull(research)
-        assertTrue(research.isBuiltIn)
-        assertTrue(research.isActive)
-        assertTrue(research.systemPrompt.isNotBlank())
+        val lumen = personas.find { it.name == PersonaManager.DEFAULT_PERSONA_NAME }
+        assertNotNull(lumen)
+        assertTrue(lumen.isBuiltIn)
+        assertTrue(lumen.isActive)
+        assertTrue(lumen.systemPrompt.isNotBlank())
 
-        val casual = personas.find { it.name == PersonaManager.CASUAL_COMPANION_NAME }
+        val formal = personas.find { it.name == PersonaManager.FORMAL_STYLE_NAME }
+        assertNotNull(formal)
+        assertTrue(formal.isBuiltIn)
+        assertFalse(formal.isActive)
+
+        val casual = personas.find { it.name == PersonaManager.CASUAL_STYLE_NAME }
         assertNotNull(casual)
         assertTrue(casual.isBuiltIn)
         assertFalse(casual.isActive)
@@ -61,17 +66,17 @@ class PersonaManagerTest {
         manager.seedBuiltInPersonas()
         manager.seedBuiltInPersonas()
 
-        assertEquals(2, manager.listAll().size)
+        assertEquals(3, manager.listAll().size)
     }
 
     @Test
     fun setActive_deactivatesPreviousAndActivatesTarget() {
         manager.seedBuiltInPersonas()
         val personas = manager.listAll()
-        val research = personas.find { it.name == PersonaManager.RESEARCH_ASSISTANT_NAME }!!
-        val casual = personas.find { it.name == PersonaManager.CASUAL_COMPANION_NAME }!!
+        val lumen = personas.find { it.name == PersonaManager.DEFAULT_PERSONA_NAME }!!
+        val casual = personas.find { it.name == PersonaManager.CASUAL_STYLE_NAME }!!
 
-        assertTrue(manager.getActive()!!.id == research.id)
+        assertTrue(manager.getActive()!!.id == lumen.id)
 
         manager.setActive(casual.id)
 
@@ -79,9 +84,9 @@ class PersonaManagerTest {
         assertNotNull(activeAfter)
         assertEquals(casual.id, activeAfter.id)
 
-        val researchAfter = manager.get(research.id)
-        assertNotNull(researchAfter)
-        assertFalse(researchAfter.isActive)
+        val lumenAfter = manager.get(lumen.id)
+        assertNotNull(lumenAfter)
+        assertFalse(lumenAfter.isActive)
     }
 
     @Test

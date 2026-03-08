@@ -48,6 +48,6 @@ object LlmClientFactory {
             "anthropic" -> LLMProvider.Anthropic
             else -> LLMProvider.OpenAI
         }
-        return LLModel(provider, config.model, listOf(LLMCapability.Completion))
+        return LLModel(provider, config.model, listOf(LLMCapability.Completion, LLMCapability.Tools))
     }
 }

@@ -11,17 +11,26 @@ class PersonaManager(private val db: LumenDatabase) {
         db.personaBox.put(
             listOf(
                 Persona(
-                    name = RESEARCH_ASSISTANT_NAME,
-                    systemPrompt = RESEARCH_ASSISTANT_PROMPT,
-                    greeting = "How can I help with your research today?",
-                    avatarEmoji = "microscope",
+                    name = DEFAULT_PERSONA_NAME,
+                    systemPrompt = DEFAULT_PERSONA_PROMPT,
+                    greeting = "Hi! I'm Lumen. How can I help you today?",
+                    avatarEmoji = "star",
                     isBuiltIn = true,
                     isActive = true,
                     createdAt = now,
                 ),
                 Persona(
-                    name = CASUAL_COMPANION_NAME,
-                    systemPrompt = CASUAL_COMPANION_PROMPT,
+                    name = FORMAL_STYLE_NAME,
+                    systemPrompt = FORMAL_STYLE_PROMPT,
+                    greeting = "Hello. How may I assist you?",
+                    avatarEmoji = "books",
+                    isBuiltIn = true,
+                    isActive = false,
+                    createdAt = now,
+                ),
+                Persona(
+                    name = CASUAL_STYLE_NAME,
+                    systemPrompt = CASUAL_STYLE_PROMPT,
                     greeting = "Hey! What's on your mind?",
                     avatarEmoji = "sparkles",
                     isBuiltIn = true,
@@ -83,17 +92,28 @@ class PersonaManager(private val db: LumenDatabase) {
     }
 
     companion object {
-        const val RESEARCH_ASSISTANT_NAME = "Research Assistant"
-        const val CASUAL_COMPANION_NAME = "Casual Companion"
+        const val DEFAULT_PERSONA_NAME = "Lumen"
+        const val FORMAL_STYLE_NAME = "Formal"
+        const val CASUAL_STYLE_NAME = "Casual"
 
-        internal const val RESEARCH_ASSISTANT_PROMPT =
-            "You are a research assistant. Be structured, precise, and academic in your responses. " +
-                "Focus on providing well-sourced, factual information. Use clear organization with " +
-                "bullet points and headings when appropriate."
+        internal const val DEFAULT_PERSONA_PROMPT =
+            "You are Lumen, a personal AI assistant and companion. " +
+                "You help with research (finding papers, analyzing trends, generating digests) " +
+                "and daily conversations alike. You remember things the user tells you across sessions. " +
+                "Be warm but informative, concise but thorough when needed. " +
+                "Adapt your tone naturally to the context: more structured for research questions, " +
+                "more conversational for casual chat."
 
-        internal const val CASUAL_COMPANION_PROMPT =
-            "You are a friendly, casual companion. Be warm, conversational, and approachable. " +
-                "Use natural language and show genuine interest in the conversation. " +
-                "Keep responses concise but engaging."
+        internal const val FORMAL_STYLE_PROMPT =
+            "You are Lumen, a personal AI assistant and companion. " +
+                "You help with research and daily conversations alike, remembering things across sessions. " +
+                "Use a structured, precise, and academic tone. Organize responses with clear headings " +
+                "and bullet points when appropriate. Be thorough and well-sourced."
+
+        internal const val CASUAL_STYLE_PROMPT =
+            "You are Lumen, a personal AI assistant and companion. " +
+                "You help with research and daily conversations alike, remembering things across sessions. " +
+                "Be warm, conversational, and approachable. Use natural language and keep responses " +
+                "concise but engaging."
     }
 }
