@@ -235,7 +235,7 @@ private fun SettingsMainScreen(
                     onClick = {
                         val updatedConfig = config.copy(
                             llm = currentLlmConfig(),
-                            preferences = UserPreferences(
+                            preferences = config.preferences.copy(
                                 theme = theme,
                                 language = language,
                                 memoryAutoRecall = memoryAutoRecall,

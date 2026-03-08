@@ -165,6 +165,14 @@ fun SourcesScreen(onBack: () -> Unit) {
     }
 }
 
+private fun displaySourceType(type: String): String = when (type.uppercase()) {
+    "ARXIV_API" -> "arXiv API"
+    "SEMANTIC_SCHOLAR" -> "Semantic Scholar"
+    "GITHUB_RELEASES" -> "GitHub Releases"
+    "RSS" -> "RSS"
+    else -> type
+}
+
 @Composable
 private fun SourceCard(
     source: Source,
@@ -191,7 +199,7 @@ private fun SourceCard(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = source.type,
+                        text = displaySourceType(source.type),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
