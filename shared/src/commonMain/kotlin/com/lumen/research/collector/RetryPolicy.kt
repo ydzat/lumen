@@ -1,5 +1,6 @@
 package com.lumen.research.collector
 
+import com.lumen.core.database.entities.Source
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -19,7 +20,7 @@ object RetryPolicy {
         return nowMs + delay
     }
 
-    fun isRetryable(source: com.lumen.core.database.entities.Source, nowMs: Long): Boolean {
+    fun isRetryable(source: Source, nowMs: Long): Boolean {
         return source.nextRetryAt <= nowMs
     }
 }

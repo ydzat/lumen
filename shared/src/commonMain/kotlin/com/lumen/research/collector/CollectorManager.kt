@@ -228,6 +228,7 @@ class CollectorManager(
                         val ds = dataSources.find { it.type == type }
                         if (ds != null) {
                             val result = ds.fetch(sources, context)
+                            // Record outcome per source-type group (not per individual source)
                             for (source in sources) {
                                 if (result.errors.isEmpty()) {
                                     sourceManager.recordSuccess(source.id)
