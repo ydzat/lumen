@@ -1,10 +1,12 @@
 # ============================================================
 # Lumen Android — R8 / ProGuard keep rules
 # ============================================================
+# Note: Broad keep rules are intentional. AGP 8.7.3's R8 cannot
+# parse Kotlin 2.2.0 metadata, so narrowing causes R8 failures.
+# Revisit once AGP is updated to support Kotlin 2.2.0.
 
 # ---- ObjectBox entities & generated cursor/properties classes ----
 -keep class com.lumen.core.database.entities.** { *; }
--keep class com.lumen.core.database.entities.**_ { *; }
 -keep class io.objectbox.** { *; }
 -dontwarn io.objectbox.**
 
