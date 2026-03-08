@@ -8,4 +8,5 @@ data class UserPreferences(
     val theme: String = "system",
     val memoryAutoRecall: Boolean = true,
     val memoryExtractionInterval: Int = 10,
+    val hasCompletedOnboarding: Boolean = false,
 )

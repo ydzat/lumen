@@ -23,6 +23,7 @@ import com.lumen.core.di.platformModule
 import com.lumen.core.di.researchModule
 import com.lumen.ui.navigation.Tab
 import com.lumen.ui.navigation.TabContent
+import com.lumen.ui.screen.OnboardingScreen
 import com.lumen.ui.theme.LumenTheme
 import com.lumen.ui.theme.ThemeState
 import org.koin.core.context.GlobalContext
@@ -34,27 +35,34 @@ fun main() {
     }
     val koin = GlobalContext.get()
     koin.get<PersonaManager>().seedBuiltInPersonas()
-    ThemeState.mode = koin.get<ConfigStore>().load().preferences.theme
+    val config = koin.get<ConfigStore>().load()
+    ThemeState.mode = config.preferences.theme
     application {
         Window(
             onCloseRequest = ::exitApplication,
             title = "Lumen",
         ) {
             LumenTheme {
-                var selectedTab by remember { mutableStateOf(Tab.Home) }
-                Row(modifier = Modifier.fillMaxSize()) {
-                    NavigationRail {
-                        Tab.entries.forEach { tab ->
-                            NavigationRailItem(
-                                selected = selectedTab == tab,
-                                onClick = { selectedTab = tab },
-                                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                label = { Text(tab.label) },
-                            )
+                var showOnboarding by remember { mutableStateOf(!config.preferences.hasCompletedOnboarding) }
+
+                if (showOnboarding) {
+                    OnboardingScreen(onComplete = { showOnboarding = false })
+                } else {
+                    var selectedTab by remember { mutableStateOf(Tab.Home) }
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        NavigationRail {
+                            Tab.entries.forEach { tab ->
+                                NavigationRailItem(
+                                    selected = selectedTab == tab,
+                                    onClick = { selectedTab = tab },
+                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                    label = { Text(tab.label) },
+                                )
+                            }
                         }
-                    }
-                    Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                        TabContent(selectedTab)
+                        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                            TabContent(selectedTab)
+                        }
                     }
                 }
             }
