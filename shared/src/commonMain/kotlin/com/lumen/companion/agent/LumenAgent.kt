@@ -216,7 +216,9 @@ class LumenAgent(
     ): String? {
         val conversation = cm.getConversation(conversationId) ?: return null
         if (conversation.title != DEFAULT_TITLE) return null
-        if (conversation.messageCount > 2) return null
+        // Only count user+assistant messages; tool_call/tool_result inflate messageCount
+        val userAssistantCount = cm.getMessages(conversationId).count { it.role == "user" || it.role == "assistant" }
+        if (userAssistantCount > 2) return null
 
         val title = generateTitle(userMessage) ?: return null
         cm.updateTitle(conversationId, title)
