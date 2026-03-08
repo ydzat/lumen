@@ -10,9 +10,9 @@ import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
+import com.lumen.research.archiver.ArticleArchiver
 import com.lumen.research.digest.DigestGenerator
 import com.lumen.research.parseCsvSet
-import com.lumen.research.archiver.ArticleArchiver
 import com.lumen.research.spark.SparkEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

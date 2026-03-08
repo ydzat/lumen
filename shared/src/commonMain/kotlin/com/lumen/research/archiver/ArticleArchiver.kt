@@ -28,7 +28,7 @@ class ArticleArchiver(
         maxAgeDays: Int = DEFAULT_MAX_AGE_DAYS,
         minRelevanceScore: Float = DEFAULT_MIN_RELEVANCE,
     ): ArchiveResult {
-        val cutoffTime = System.currentTimeMillis() - maxAgeDays * MILLIS_PER_DAY
+        val cutoffTime = System.currentTimeMillis() - maxAgeDays.toLong() * MILLIS_PER_DAY
         val staleArticles = queryStaleArticles(cutoffTime, minRelevanceScore)
 
         val errors = mutableListOf<String>()
@@ -50,11 +50,12 @@ class ArticleArchiver(
         if (activeCount <= targetArticleCount) return ArchiveResult(archived = 0)
 
         val toArchive = (activeCount - targetArticleCount).toInt()
+        val scanLimit = toArchive.coerceAtMost(EMERGENCY_SCAN_LIMIT)
         val candidates = db.articleBox.query()
             .equal(Article_.archived, false)
             .equal(Article_.starred, false)
             .build()
-            .use { it.find() }
+            .use { it.find(0, (scanLimit * 2).toLong()) }
             .sortedBy { it.aiRelevanceScore }
             .take(toArchive)
 
@@ -143,6 +144,7 @@ class ArticleArchiver(
         internal const val DEFAULT_MAX_AGE_DAYS = 30
         internal const val DEFAULT_MIN_RELEVANCE = 0.3f
         internal const val DEFAULT_MAX_ARTICLES = 5000
+        private const val EMERGENCY_SCAN_LIMIT = 2000
         private const val MILLIS_PER_DAY = 86_400_000L
     }
 }
