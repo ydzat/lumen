@@ -3,6 +3,7 @@ package com.lumen.server.routes
 import com.lumen.core.archive.ArchiveManager
 import com.lumen.core.archive.ArchiveManifest
 import com.lumen.server.dto.ImportResponse
+import com.lumen.server.plugins.PayloadTooLargeException
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.content.PartData
@@ -20,6 +21,8 @@ import kotlinx.serialization.json.Json
 import org.koin.ktor.ext.get as koinGet
 import java.io.ByteArrayInputStream
 import java.util.zip.ZipInputStream
+
+private const val MAX_ARCHIVE_SIZE = 200L * 1024 * 1024
 
 fun Route.archiveRoutes() {
     route("/archive") {
@@ -51,6 +54,10 @@ fun Route.archiveRoutes() {
 
             val bytes = fileBytes
                 ?: throw IllegalArgumentException("No archive file provided")
+
+            if (bytes.size.toLong() > MAX_ARCHIVE_SIZE) {
+                throw PayloadTooLargeException("Archive exceeds 200 MB limit")
+            }
 
             val manifest = readManifest(bytes)
             archiveManager.import(ByteArrayInputStream(bytes))
