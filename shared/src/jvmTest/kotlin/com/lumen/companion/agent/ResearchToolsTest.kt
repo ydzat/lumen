@@ -18,6 +18,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
@@ -78,6 +79,94 @@ class ResearchToolsTest {
         val result = tool.execute(SearchArticlesArgs(query = "anything", limit = 5))
 
         assertEquals("No articles found.", result)
+    }
+
+    @Test
+    fun searchArticlesTool_execute_includesDateAndRelevance() = runBlocking {
+        val now = System.currentTimeMillis()
+        val embedding = fakeEmbeddingClient.embed("transformers")
+        db.articleBox.put(
+            Article(
+                title = "Attention Is All You Need",
+                url = "https://example.com/attention",
+                embedding = embedding,
+                publishedAt = now - 86_400_000L,
+                aiRelevanceScore = 0.95f,
+            ),
+        )
+
+        val tool = SearchArticlesTool(db, fakeEmbeddingClient)
+        val result = tool.execute(SearchArticlesArgs(query = "transformers"))
+
+        assertTrue(result.contains("Attention Is All You Need"))
+        assertTrue(result.contains("Date:"))
+        assertTrue(result.contains("Relevance: 0.95"))
+    }
+
+    @Test
+    fun searchArticlesTool_daysBack_filtersOldArticles() = runBlocking {
+        val now = System.currentTimeMillis()
+        val embedding = fakeEmbeddingClient.embed("test query")
+        db.articleBox.put(
+            Article(
+                title = "Recent Article",
+                url = "url1",
+                embedding = embedding,
+                publishedAt = now - 86_400_000L, // 1 day ago
+            ),
+        )
+        db.articleBox.put(
+            Article(
+                title = "Old Article",
+                url = "url2",
+                embedding = embedding,
+                publishedAt = now - 30L * 86_400_000L, // 30 days ago
+            ),
+        )
+
+        val tool = SearchArticlesTool(db, fakeEmbeddingClient)
+        val result = tool.execute(SearchArticlesArgs(query = "test query", daysBack = 7))
+
+        assertTrue(result.contains("Recent Article"), "Should include recent article, got: $result")
+        assertFalse(result.contains("Old Article"), "Should exclude old article, got: $result")
+    }
+
+    @Test
+    fun searchArticlesTool_daysBack_zero_noDateFilter() = runBlocking {
+        val now = System.currentTimeMillis()
+        val embedding = fakeEmbeddingClient.embed("test query")
+        db.articleBox.put(
+            Article(title = "Recent", url = "url1", embedding = embedding, publishedAt = now),
+        )
+        db.articleBox.put(
+            Article(title = "Ancient", url = "url2", embedding = embedding, publishedAt = 1000L),
+        )
+
+        val tool = SearchArticlesTool(db, fakeEmbeddingClient)
+        val result = tool.execute(SearchArticlesArgs(query = "test query", daysBack = 0))
+
+        assertTrue(result.contains("Recent"))
+        assertTrue(result.contains("Ancient"))
+    }
+
+    @Test
+    fun searchArticlesTool_daysBack_usesFetchedAtFallback() = runBlocking {
+        val now = System.currentTimeMillis()
+        val embedding = fakeEmbeddingClient.embed("test query")
+        db.articleBox.put(
+            Article(
+                title = "No Publish Date",
+                url = "url1",
+                embedding = embedding,
+                publishedAt = 0,
+                fetchedAt = now - 86_400_000L, // fetched 1 day ago
+            ),
+        )
+
+        val tool = SearchArticlesTool(db, fakeEmbeddingClient)
+        val result = tool.execute(SearchArticlesArgs(query = "test query", daysBack = 7))
+
+        assertTrue(result.contains("No Publish Date"), "Should include article with recent fetchedAt, got: $result")
     }
 
     @Test

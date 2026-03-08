@@ -6,11 +6,15 @@ import com.lumen.core.database.entities.Article_
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.research.parseCsvSet
 import kotlinx.serialization.Serializable
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @Serializable
 data class SearchArticlesArgs(
     val query: String,
     val projectId: Long = 0,
+    val daysBack: Int = 0,
     val limit: Int = 5,
 )
 
@@ -21,23 +25,41 @@ class SearchArticlesTool(
 ) : SimpleTool<SearchArticlesArgs>(
     SearchArticlesArgs.serializer(),
     "search_articles",
-    "Search research articles by semantic similarity to a query. Optionally scope to a project.",
+    "Search research articles by semantic similarity. Supports projectId, daysBack (date filter), and limit.",
 ) {
     override suspend fun execute(args: SearchArticlesArgs): String {
         val effectiveProjectId = args.projectId.takeIf { it > 0 } ?: defaultProjectId
+        val needsFiltering = effectiveProjectId > 0 || args.daysBack > 0
         val embedding = embeddingClient.embed(args.query)
 
-        val searchLimit = if (effectiveProjectId > 0) args.limit * OVER_FETCH_FACTOR else args.limit
+        val searchLimit = if (needsFiltering) args.limit * OVER_FETCH_FACTOR else args.limit
         val allArticles = db.articleBox.query()
             .nearestNeighbors(Article_.embedding, embedding, searchLimit)
             .build()
             .use { it.find() }
 
-        val articles = if (effectiveProjectId > 0) {
-            allArticles.filter { effectiveProjectId.toString() in parseCsvSet(it.projectIds) }.take(args.limit)
+        val cutoffMs = if (args.daysBack > 0) {
+            System.currentTimeMillis() - args.daysBack * MS_PER_DAY
         } else {
-            allArticles
+            0L
         }
+
+        val articles = allArticles
+            .let { list ->
+                if (effectiveProjectId > 0) {
+                    list.filter { effectiveProjectId.toString() in parseCsvSet(it.projectIds) }
+                } else {
+                    list
+                }
+            }
+            .let { list ->
+                if (cutoffMs > 0) {
+                    list.filter { it.publishedAt >= cutoffMs || it.fetchedAt >= cutoffMs }
+                } else {
+                    list
+                }
+            }
+            .take(args.limit)
 
         if (articles.isEmpty()) return "No articles found."
 
@@ -50,6 +72,13 @@ class SearchArticlesTool(
                 if (article.keywords.isNotBlank()) {
                     append("\n  Keywords: ${article.keywords}")
                 }
+                val dateMs = if (article.publishedAt > 0) article.publishedAt else article.fetchedAt
+                if (dateMs > 0) {
+                    append("\n  Date: ${formatEpoch(dateMs)}")
+                }
+                if (article.aiRelevanceScore > 0f) {
+                    append("\n  Relevance: ${"%.2f".format(article.aiRelevanceScore)}")
+                }
                 if (article.url.isNotBlank()) {
                     append("\n  URL: ${article.url}")
                 }
@@ -59,5 +88,10 @@ class SearchArticlesTool(
 
     companion object {
         private const val OVER_FETCH_FACTOR = 3
+        private const val MS_PER_DAY = 86_400_000L
+        private val DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+        private fun formatEpoch(epochMs: Long): String =
+            Instant.ofEpochMilli(epochMs).atZone(ZoneOffset.UTC).format(DATE_FMT)
     }
 }
