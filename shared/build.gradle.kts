@@ -27,7 +27,7 @@ kotlin {
         val jvmCommonMain by creating {
             dependsOn(commonMain.get())
             dependencies {
-                implementation(libs.onnxruntime)
+                compileOnly(libs.onnxruntime)
                 implementation(libs.djl.tokenizers)
             }
         }
@@ -68,6 +68,7 @@ kotlin {
         jvmMain {
             dependsOn(jvmCommonMain)
             dependencies {
+                implementation(libs.onnxruntime)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.pdfbox)
             }
