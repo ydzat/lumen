@@ -1,6 +1,8 @@
 package com.lumen.core.database
 
 import com.lumen.core.database.entities.Article
+import com.lumen.core.database.entities.ArticleSection
+import com.lumen.core.database.entities.ArticleSection_
 import com.lumen.core.database.entities.Article_
 import com.lumen.core.database.entities.Conversation
 import com.lumen.core.database.entities.Digest
@@ -449,6 +451,50 @@ class LumenDatabaseTest {
 
         assertEquals(2, chunks.size)
         assertTrue(chunks.all { it.documentId == 1L })
+    }
+
+    // --- ArticleSection tests ---
+
+    @Test
+    fun putAndGetArticleSection() {
+        val section = ArticleSection(
+            articleId = 1,
+            sectionIndex = 0,
+            heading = "Introduction",
+            content = "This is the introduction.",
+            level = 1,
+            isKeySection = true,
+            aiCommentary = "Novel approach.",
+            aiTranslation = "",
+        )
+        val id = db.articleSectionBox.put(section)
+        assertNotEquals(0, id)
+
+        val retrieved = db.articleSectionBox.get(id)
+        assertEquals(1L, retrieved.articleId)
+        assertEquals(0, retrieved.sectionIndex)
+        assertEquals("Introduction", retrieved.heading)
+        assertEquals("This is the introduction.", retrieved.content)
+        assertEquals(1, retrieved.level)
+        assertTrue(retrieved.isKeySection)
+        assertEquals("Novel approach.", retrieved.aiCommentary)
+        assertEquals("", retrieved.aiTranslation)
+    }
+
+    @Test
+    fun queryArticleSectionsByArticleId() {
+        db.articleSectionBox.put(ArticleSection(articleId = 1, sectionIndex = 0, heading = "Intro", content = "c1"))
+        db.articleSectionBox.put(ArticleSection(articleId = 1, sectionIndex = 1, heading = "Methods", content = "c2"))
+        db.articleSectionBox.put(ArticleSection(articleId = 2, sectionIndex = 0, heading = "Other", content = "c3"))
+
+        val query = db.articleSectionBox.query()
+            .equal(ArticleSection_.articleId, 1L)
+            .build()
+        val sections = query.find()
+        query.close()
+
+        assertEquals(2, sections.size)
+        assertTrue(sections.all { it.articleId == 1L })
     }
 
     @Test

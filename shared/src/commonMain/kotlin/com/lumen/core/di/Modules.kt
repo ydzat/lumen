@@ -20,6 +20,7 @@ import com.lumen.core.memory.SemanticCompressor
 import com.lumen.core.memory.SemanticSynthesizer
 import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
+import com.lumen.research.analyzer.DeepAnalysisService
 import com.lumen.research.analyzer.RelevanceScorer
 import com.lumen.research.collector.ArxivApiDataSource
 import com.lumen.research.archiver.ArticleArchiver
@@ -80,6 +81,7 @@ val researchModule = module {
     single { SourceManager(get()) }
     single { ProjectManager(get(), get()) }
     single { ArticleAnalyzer(get(), get(), get()) }
+    single { DeepAnalysisService(get(), get()) }
     single { RelevanceScorer(get(), getOrNull()) }
     single { DigestGenerator(get(), get(), getOrNull(), getOrNull(), getOrNull()) }
     single { DigestFormatter() }

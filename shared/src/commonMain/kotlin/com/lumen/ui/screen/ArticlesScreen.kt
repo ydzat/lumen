@@ -60,7 +60,9 @@ import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
+import com.lumen.core.database.entities.ArticleSection
 import com.lumen.research.analyzer.ArticleAnalyzer
+import com.lumen.research.analyzer.DeepAnalysisService
 import com.lumen.research.collector.AnalysisStatus
 import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.PipelineStage
@@ -87,6 +89,7 @@ fun ArticlesScreen() {
     val collectorManager = koinInject<CollectorManager>()
     val memoryManager = getKoin().getOrNull<MemoryManager>()
     val articleAnalyzer = koinInject<ArticleAnalyzer>()
+    val deepAnalysisService = koinInject<DeepAnalysisService>()
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -106,6 +109,9 @@ fun ArticlesScreen() {
     var showAnalyzePrompt by remember { mutableStateOf(false) }
     var isAnalyzing by remember { mutableStateOf(false) }
     var projectExpanded by remember { mutableStateOf(false) }
+    var articleSections by remember { mutableStateOf<List<ArticleSection>>(emptyList()) }
+    var deepAnalysisLoading by remember { mutableStateOf(false) }
+    var sectionLoadingIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
     // Initialize activeProjectId from DB once on first composition
     LaunchedEffect(Unit) {
@@ -488,13 +494,27 @@ fun ArticlesScreen() {
         }
     }
 
+    // Load sections when detail article changes
+    LaunchedEffect(detailArticle?.id) {
+        detailArticle?.let {
+            articleSections = deepAnalysisService.getSections(it.id)
+        } ?: run {
+            articleSections = emptyList()
+        }
+    }
+
     // Full detail screen
     detailArticle?.let { article ->
+        val configStore = koinInject<com.lumen.core.config.ConfigStore>()
         ArticleDetailScreen(
             article = article,
             sourceName = sourceNames[article.sourceId] ?: "Unknown",
+            sections = articleSections,
+            deepAnalysisLoading = deepAnalysisLoading,
+            sectionLoadingIds = sectionLoadingIds,
             onBack = {
                 detailArticle = null
+                articleSections = emptyList()
                 loadData()
             },
             onStarToggle = {
@@ -525,6 +545,44 @@ fun ArticlesScreen() {
                 val updated = article.copy(archived = !article.archived)
                 db.articleBox.put(updated)
                 detailArticle = updated
+            },
+            onDeepAnalyze = {
+                scope.launch {
+                    deepAnalysisLoading = true
+                    try {
+                        val sections = withContext(Dispatchers.Default) {
+                            deepAnalysisService.extractAndAnalyze(article.id)
+                        }
+                        articleSections = sections
+                        // Refresh article to get updated deepAnalysisStatus
+                        detailArticle = db.articleBox.get(article.id)
+                        snackbarHostState.showSnackbar("Deep analysis complete")
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar(
+                            "Deep analysis failed: ${e.message ?: "Unknown error"}"
+                        )
+                    } finally {
+                        deepAnalysisLoading = false
+                    }
+                }
+            },
+            onTranslateSection = { sectionId ->
+                scope.launch {
+                    sectionLoadingIds = sectionLoadingIds + sectionId
+                    try {
+                        val language = configStore.load().preferences.language
+                        withContext(Dispatchers.Default) {
+                            deepAnalysisService.translateSection(sectionId, language)
+                        }
+                        articleSections = deepAnalysisService.getSections(article.id)
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar(
+                            "Translation failed: ${e.message ?: "Unknown error"}"
+                        )
+                    } finally {
+                        sectionLoadingIds = sectionLoadingIds - sectionId
+                    }
+                }
             },
         )
     }
