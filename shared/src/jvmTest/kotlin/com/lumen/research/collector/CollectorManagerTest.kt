@@ -45,24 +45,21 @@ class CollectorManagerTest {
     }
 
     private fun createManager(): CollectorManager {
-        val rssCollector = RssCollector(db)
         val analyzer = ArticleAnalyzer(db, noopLlmCall, fakeEmbeddingClient)
         val scorer = RelevanceScorer(db, null)
         val digestGenerator = DigestGenerator(db, noopLlmCall, null)
-        return CollectorManager(rssCollector, analyzer, scorer, digestGenerator)
+        return CollectorManager(analyzer, scorer, digestGenerator)
     }
 
     private fun createManagerWithDataSources(
         dataSources: List<DataSource> = emptyList(),
     ): CollectorManager {
-        val rssCollector = RssCollector(db)
         val analyzer = ArticleAnalyzer(db, noopLlmCall, fakeEmbeddingClient)
         val scorer = RelevanceScorer(db, null)
         val digestGenerator = DigestGenerator(db, noopLlmCall, null)
         val sourceManager = SourceManager(db)
         val deduplicator = Deduplicator(db)
         return CollectorManager(
-            rssCollector = rssCollector,
             articleAnalyzer = analyzer,
             relevanceScorer = scorer,
             digestGenerator = digestGenerator,
@@ -121,7 +118,7 @@ class CollectorManagerTest {
     }
 
     @Test
-    fun runPipeline_withEmptyDataSources_fallsBackToRssCollector() = runBlocking {
+    fun runPipeline_withEmptyDataSources_returnsEmpty() = runBlocking {
         val manager = createManagerWithDataSources(emptyList())
 
         val result = manager.runPipeline()

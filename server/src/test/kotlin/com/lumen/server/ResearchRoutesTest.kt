@@ -12,7 +12,7 @@ import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
 import com.lumen.research.analyzer.RelevanceScorer
 import com.lumen.research.collector.CollectorManager
-import com.lumen.research.collector.RssCollector
+import com.lumen.research.collector.RssDataSource
 import com.lumen.research.collector.SourceManager
 import com.lumen.research.digest.DigestGenerator
 import com.lumen.server.config.ServerConfigStore
@@ -101,12 +101,12 @@ class ResearchRoutesTest {
         single { fakeEmbeddingClient as EmbeddingClient }
         single { fakeLlmCall as LlmCall }
         single { SourceManager(get()) }
-        single { RssCollector(get()) }
+        single { RssDataSource(get()) }
         single { ProjectManager(get(), get()) }
         single { ArticleAnalyzer(get(), get(), get()) }
         single { RelevanceScorer(get(), null) }
         single { DigestGenerator(get(), get(), null) }
-        single { CollectorManager(get(), get(), get(), get()) }
+        single { CollectorManager(get(), get(), get()) }
         single { ServerConfigStore(tempDir) }
         single { NtfyNotifier(HttpClient(MockEngine { respond("ok") }), get()) }
     }

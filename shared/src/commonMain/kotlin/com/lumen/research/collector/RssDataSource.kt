@@ -2,9 +2,7 @@ package com.lumen.research.collector
 
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
-import com.lumen.core.database.entities.Article_
 import com.lumen.core.database.entities.Source
-import com.lumen.core.database.entities.Source_
 import com.prof18.rssparser.RssParser
 import com.prof18.rssparser.model.RssChannel
 import java.time.Instant
@@ -12,40 +10,53 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class RssCollector(
+class RssDataSource(
     private val db: LumenDatabase,
     private val rssParser: RssParser = RssParser(),
     private val rssHubBaseUrl: String = DEFAULT_RSSHUB_BASE_URL,
-) {
+) : DataSource {
 
-    suspend fun fetchSource(source: Source): List<Article> {
-        val feedUrl = resolveFeedUrl(source.url)
-        val channel = rssParser.getRssChannel(feedUrl)
-        return processChannel(channel, source)
-    }
+    override val type: SourceType = SourceType.RSS
+    override val displayName: String = "RSS"
 
-    data class FetchResult(
-        val articles: List<Article>,
-        val errors: List<String>,
-    )
-
-    suspend fun fetchAll(): FetchResult {
-        val enabledSources = db.sourceBox.query()
-            .equal(Source_.enabled, true)
-            .build()
-            .use { it.find() }
+    override suspend fun fetch(sources: List<Source>, context: FetchContext): DataFetchResult {
         val allArticles = mutableListOf<Article>()
         val errors = mutableListOf<String>()
-        for (source in enabledSources) {
+        var remainingBudget = context.remainingBudget
+
+        for (source in sources) {
+            if (remainingBudget <= 0) break
+
             try {
-                allArticles.addAll(fetchSource(source))
+                val feedUrl = resolveFeedUrl(source.url)
+                val channel = rssParser.getRssChannel(feedUrl)
+                val articles = processChannel(channel, source)
+                    .take(remainingBudget)
+
+                if (articles.isNotEmpty()) {
+                    db.articleBox.put(articles)
+                }
+                db.sourceBox.put(source.copy(lastFetchedAt = System.currentTimeMillis()))
+
+                allArticles.addAll(articles)
+                remainingBudget -= articles.size
             } catch (e: Exception) {
-                val msg = "${source.name}: ${e.message ?: e::class.simpleName}"
-                errors.add(msg)
-                println("WARNING: Failed to fetch ${source.name}: ${e.message}")
+                errors.add("RSS ${source.name}: ${e.message ?: e::class.simpleName}")
             }
         }
-        return FetchResult(allArticles, errors)
+
+        return DataFetchResult(allArticles, errors, SourceType.RSS)
+    }
+
+    suspend fun fetchSingle(source: Source): List<Article> {
+        val feedUrl = resolveFeedUrl(source.url)
+        val channel = rssParser.getRssChannel(feedUrl)
+        val articles = processChannel(channel, source)
+        if (articles.isNotEmpty()) {
+            db.articleBox.put(articles)
+        }
+        db.sourceBox.put(source.copy(lastFetchedAt = System.currentTimeMillis()))
+        return articles
     }
 
     internal suspend fun parseAndProcess(xml: String, source: Source): List<Article> {
@@ -55,11 +66,8 @@ class RssCollector(
 
     private fun processChannel(channel: RssChannel, source: Source): List<Article> {
         val now = System.currentTimeMillis()
-        val existingUrls = queryExistingUrls(source.id)
-
-        val newArticles = channel.items.mapNotNull { item ->
+        return channel.items.mapNotNull { item ->
             val itemUrl = item.link ?: return@mapNotNull null
-            if (itemUrl in existingUrls) return@mapNotNull null
 
             Article(
                 sourceId = source.id,
@@ -70,32 +78,16 @@ class RssCollector(
                 author = item.author.orEmpty(),
                 publishedAt = parseRssDate(item.pubDate),
                 fetchedAt = now,
+                sourceType = "RSS",
             )
         }
-
-        if (newArticles.isNotEmpty()) {
-            db.articleBox.put(newArticles)
-        }
-
-        val updatedSource = source.copy(lastFetchedAt = now)
-        db.sourceBox.put(updatedSource)
-
-        return newArticles
-    }
-
-    private fun queryExistingUrls(sourceId: Long): Set<String> {
-        val articles = db.articleBox.query()
-            .equal(Article_.sourceId, sourceId)
-            .build()
-            .use { it.find() }
-        return articles.mapTo(mutableSetOf()) { it.url }
     }
 
     internal fun resolveFeedUrl(url: String): String {
         return if (url.startsWith("http://") || url.startsWith("https://")) {
             url
         } else {
-            "$rssHubBaseUrl${url}"
+            "$rssHubBaseUrl$url"
         }
     }
 

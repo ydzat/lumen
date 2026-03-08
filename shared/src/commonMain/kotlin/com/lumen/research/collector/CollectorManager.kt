@@ -17,7 +17,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 class CollectorManager(
-    private val rssCollector: RssCollector,
     private val articleAnalyzer: ArticleAnalyzer,
     private val relevanceScorer: RelevanceScorer,
     private val digestGenerator: DigestGenerator,
@@ -38,8 +37,7 @@ class CollectorManager(
         val (fetchedArticles, fetchErrors) = if (dataSources.isNotEmpty() && sourceManager != null) {
             fetchViaDataSources(buildFetchContext())
         } else {
-            val result = rssCollector.fetchAll()
-            result.articles to result.errors
+            emptyList<Article>() to emptyList<String>()
         }
 
         // 2. Dedup
@@ -98,8 +96,7 @@ class CollectorManager(
         val (articles, _) = if (dataSources.isNotEmpty() && sourceManager != null) {
             fetchViaDataSources(buildFetchContext())
         } else {
-            val result = rssCollector.fetchAll()
-            result.articles to result.errors
+            emptyList<Article>() to emptyList<String>()
         }
         return articles
     }
@@ -166,9 +163,6 @@ class CollectorManager(
                         val ds = dataSources.find { it.type == type }
                         if (ds != null) {
                             ds.fetch(sources, context)
-                        } else if (type == SourceType.RSS) {
-                            val result = rssCollector.fetchAll()
-                            DataFetchResult(result.articles, result.errors, SourceType.RSS)
                         } else {
                             DataFetchResult(emptyList(), listOf("No handler for source type: $type"), type)
                         }

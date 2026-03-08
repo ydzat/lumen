@@ -5,7 +5,7 @@ import com.lumen.server.dto.SourceCreateRequest
 import com.lumen.server.dto.toDto
 import com.lumen.server.dto.toEntity
 import com.lumen.server.plugins.NotFoundException
-import com.lumen.research.collector.RssCollector
+import com.lumen.research.collector.RssDataSource
 import com.lumen.research.collector.SourceManager
 import com.lumen.research.collector.SourceType
 import io.ktor.http.HttpStatusCode
@@ -73,14 +73,14 @@ fun Route.sourceRoutes() {
 
         post("/{id}/refresh") {
             val sourceManager = call.application.koinGet<SourceManager>()
-            val rssCollector = call.application.koinGet<RssCollector>()
+            val rssDataSource = call.application.koinGet<RssDataSource>()
             val id = call.parameters["id"]?.toLongOrNull()
                 ?: throw IllegalArgumentException("Invalid source ID")
             val source = sourceManager.get(id)
                 ?: throw NotFoundException("Source not found: $id")
             val sourceType = SourceType.fromString(source.type)
             val articles = if (sourceType == SourceType.RSS) {
-                rssCollector.fetchSource(source)
+                rssDataSource.fetchSingle(source)
             } else {
                 emptyList()
             }

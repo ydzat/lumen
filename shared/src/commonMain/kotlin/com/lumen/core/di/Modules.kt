@@ -25,7 +25,7 @@ import com.lumen.research.collector.ArxivApiDataSource
 import com.lumen.research.collector.CollectorManager
 import com.lumen.research.collector.DataSource
 import com.lumen.research.collector.Deduplicator
-import com.lumen.research.collector.RssCollector
+import com.lumen.research.collector.RssDataSource
 import com.lumen.research.collector.ScholarDataSource
 import com.lumen.research.collector.SourceManager
 import com.lumen.research.digest.DigestFormatter
@@ -73,7 +73,7 @@ val memoryModule = module {
 }
 
 val researchModule = module {
-    single { RssCollector(get()) }
+    single { RssDataSource(get()) }
     single { SourceManager(get()) }
     single { ProjectManager(get(), get()) }
     single { ArticleAnalyzer(get(), get(), get()) }
@@ -105,10 +105,9 @@ val researchModule = module {
             },
         )
     }
-    single<List<DataSource>> { listOf(get<ArxivApiDataSource>(), get<ScholarDataSource>()) }
+    single<List<DataSource>> { listOf(get<RssDataSource>(), get<ArxivApiDataSource>(), get<ScholarDataSource>()) }
     single {
         CollectorManager(
-            rssCollector = get(),
             articleAnalyzer = get(),
             relevanceScorer = get(),
             digestGenerator = get(),
