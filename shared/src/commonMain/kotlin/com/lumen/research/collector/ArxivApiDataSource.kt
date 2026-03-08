@@ -8,11 +8,11 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import io.objectbox.query.QueryBuilder.StringOrder
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.w3c.dom.Element
-import org.w3c.dom.NodeList
 import java.io.ByteArrayInputStream
 import java.time.Instant
 import javax.xml.parsers.DocumentBuilderFactory
@@ -29,6 +29,7 @@ class ArxivApiDataSource(
         val allArticles = mutableListOf<Article>()
         val errors = mutableListOf<String>()
         var remainingBudget = context.remainingBudget
+        val existingArxivIds = queryExistingArxivIds()
 
         for ((index, source) in sources.withIndex()) {
             if (remainingBudget <= 0) break
@@ -44,7 +45,6 @@ class ArxivApiDataSource(
 
                 val xml = response.bodyAsText()
                 val parsed = parseAtomResponse(xml)
-                val existingArxivIds = queryExistingArxivIds()
                 val now = System.currentTimeMillis()
 
                 val newArticles = parsed.filter { it.arxivId !in existingArxivIds }
@@ -53,6 +53,7 @@ class ArxivApiDataSource(
 
                 if (newArticles.isNotEmpty()) {
                     db.articleBox.put(newArticles)
+                    newArticles.forEach { existingArxivIds.add(it.arxivId) }
                 }
                 db.sourceBox.put(source.copy(lastFetchedAt = now))
 
@@ -94,10 +95,7 @@ class ArxivApiDataSource(
     }
 
     internal fun parseAtomResponse(xml: String): List<Article> {
-        val factory = DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = true
-        }
-        val builder = factory.newDocumentBuilder()
+        val builder = xmlFactory.newDocumentBuilder()
         val document = builder.parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
         val entries = document.getElementsByTagNameNS(ATOM_NS, "entry")
         return (0 until entries.length).mapNotNull { i ->
@@ -106,7 +104,7 @@ class ArxivApiDataSource(
     }
 
     private fun parseEntry(entry: Element): Article? {
-        val title = getTextContent(entry, ATOM_NS, "title")?.trim()?.replace("\\s+".toRegex(), " ")
+        val title = getTextContent(entry, ATOM_NS, "title")?.trim()?.replace(WHITESPACE_PATTERN, " ")
             ?: return null
 
         val id = getTextContent(entry, ATOM_NS, "id") ?: return null
@@ -159,9 +157,9 @@ class ArxivApiDataSource(
         return null
     }
 
-    private fun queryExistingArxivIds(): Set<String> {
+    private fun queryExistingArxivIds(): MutableSet<String> {
         return db.articleBox.query()
-            .notEqual(Article_.arxivId, "", io.objectbox.query.QueryBuilder.StringOrder.CASE_SENSITIVE)
+            .notEqual(Article_.arxivId, "", StringOrder.CASE_SENSITIVE)
             .build()
             .use { it.find() }
             .mapTo(mutableSetOf()) { it.arxivId }
@@ -176,12 +174,19 @@ class ArxivApiDataSource(
         private const val ARXIV_NS = "http://arxiv.org/schemas/atom"
 
         private val ARXIV_ID_PATTERN = Regex("""arxiv\.org/abs/(\d+\.\d+)(v\d+)?""")
+        private val VERSION_SUFFIX_PATTERN = Regex("v\\d+$")
+        private val WHITESPACE_PATTERN = Regex("\\s+")
+
+        private val xmlFactory = DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = true
+            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+        }
 
         private val json = Json { ignoreUnknownKeys = true }
 
         internal fun extractArxivId(idUrl: String): String {
             val match = ARXIV_ID_PATTERN.find(idUrl)
-            return match?.groupValues?.get(1) ?: idUrl.substringAfterLast("/").replace(Regex("v\\d+$"), "")
+            return match?.groupValues?.get(1) ?: idUrl.substringAfterLast("/").replace(VERSION_SUFFIX_PATTERN, "")
         }
 
         internal fun parseIso8601(dateStr: String?): Long {
@@ -207,9 +212,5 @@ class ArxivApiDataSource(
 @Serializable
 data class ArxivSourceConfig(
     val categories: List<String> = emptyList(),
-    val maxResults: Int = MAX_RESULTS_DEFAULT,
-) {
-    companion object {
-        const val MAX_RESULTS_DEFAULT = 50
-    }
-}
+    val maxResults: Int = ArxivApiDataSource.MAX_RESULTS_DEFAULT,
+)
