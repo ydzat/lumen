@@ -164,9 +164,13 @@ fun ArticlesScreen() {
                                     collectorManager.runNow()
                                 }
                                 loadData()
-                                snackbarHostState.showSnackbar(
-                                    "Fetched ${result.fetched}, analyzed ${result.analyzed} article(s)"
-                                )
+                                val msg = buildString {
+                                    append("Fetched ${result.fetched}, analyzed ${result.analyzed} article(s)")
+                                    if (result.fetchErrors.isNotEmpty()) {
+                                        append("\nErrors: ${result.fetchErrors.joinToString("; ")}")
+                                    }
+                                }
+                                snackbarHostState.showSnackbar(msg)
                             } catch (e: Exception) {
                                 snackbarHostState.showSnackbar(
                                     "Refresh failed: ${e.message ?: "Unknown error"}"

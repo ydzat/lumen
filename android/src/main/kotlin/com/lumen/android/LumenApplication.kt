@@ -2,6 +2,7 @@ package com.lumen.android
 
 import android.app.Application
 import com.lumen.companion.persona.PersonaManager
+import com.lumen.research.collector.SourceManager
 import com.lumen.core.di.companionModule
 import com.lumen.core.di.documentModule
 import com.lumen.core.di.memoryModule
@@ -19,5 +20,6 @@ class LumenApplication : Application() {
             modules(platformModule, companionModule, memoryModule, researchModule, documentModule)
         }
         GlobalContext.get().get<PersonaManager>().seedBuiltInPersonas()
+        GlobalContext.get().get<SourceManager>().seedDefaultsIfEmpty()
     }
 }

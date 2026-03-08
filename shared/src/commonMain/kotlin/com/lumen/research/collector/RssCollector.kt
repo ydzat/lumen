@@ -24,18 +24,28 @@ class RssCollector(
         return processChannel(channel, source)
     }
 
-    suspend fun fetchAll(): List<Article> {
+    data class FetchResult(
+        val articles: List<Article>,
+        val errors: List<String>,
+    )
+
+    suspend fun fetchAll(): FetchResult {
         val enabledSources = db.sourceBox.query()
             .equal(Source_.enabled, true)
             .build()
             .use { it.find() }
-        return enabledSources.flatMap { source ->
+        val allArticles = mutableListOf<Article>()
+        val errors = mutableListOf<String>()
+        for (source in enabledSources) {
             try {
-                fetchSource(source)
-            } catch (_: Exception) {
-                emptyList()
+                allArticles.addAll(fetchSource(source))
+            } catch (e: Exception) {
+                val msg = "${source.name}: ${e.message ?: e::class.simpleName}"
+                errors.add(msg)
+                println("WARNING: Failed to fetch ${source.name}: ${e.message}")
             }
         }
+        return FetchResult(allArticles, errors)
     }
 
     internal suspend fun parseAndProcess(xml: String, source: Source): List<Article> {

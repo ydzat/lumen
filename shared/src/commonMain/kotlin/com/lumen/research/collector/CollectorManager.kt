@@ -15,7 +15,8 @@ class CollectorManager(
 ) {
 
     suspend fun runPipeline(): PipelineResult {
-        val newArticles = rssCollector.fetchAll()
+        val fetchResult = rssCollector.fetchAll()
+        val newArticles = fetchResult.articles
 
         val analyzed = if (newArticles.isNotEmpty()) {
             articleAnalyzer.analyzeBatch(newArticles)
@@ -42,6 +43,7 @@ class CollectorManager(
             scored = scored.size,
             digest = digest,
             scoredArticles = scored,
+            fetchErrors = fetchResult.errors,
         )
     }
 
@@ -54,4 +56,5 @@ data class PipelineResult(
     val scored: Int,
     val digest: Digest?,
     val scoredArticles: List<Article> = emptyList(),
+    val fetchErrors: List<String> = emptyList(),
 )

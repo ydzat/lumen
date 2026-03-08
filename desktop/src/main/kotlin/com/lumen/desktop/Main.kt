@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.lumen.companion.persona.PersonaManager
+import com.lumen.research.collector.SourceManager
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.di.companionModule
 import com.lumen.core.di.documentModule
@@ -35,6 +36,7 @@ fun main() {
     }
     val koin = GlobalContext.get()
     koin.get<PersonaManager>().seedBuiltInPersonas()
+    koin.get<SourceManager>().seedDefaultsIfEmpty()
     val config = koin.get<ConfigStore>().load()
     ThemeState.mode = config.preferences.theme
     application {
