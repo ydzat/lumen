@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.HorizontalDivider
@@ -143,62 +140,63 @@ fun HtmlContentRenderer(
                                 modifier = Modifier.padding(bottom = 6.dp),
                             )
                         }
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
+                                .border(0.5.dp, borderColor, RoundedCornerShape(4.dp))
+                                .clip(RoundedCornerShape(4.dp)),
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .border(0.5.dp, borderColor, RoundedCornerShape(4.dp))
-                                    .clip(RoundedCornerShape(4.dp)),
-                            ) {
-                                if (block.headerRow.isNotEmpty()) {
-                                    Row(
-                                        modifier = Modifier
-                                            .height(IntrinsicSize.Min)
-                                            .background(headerBg),
-                                    ) {
-                                        block.headerRow.forEachIndexed { idx, cell ->
-                                            val annotated = buildStyledText(cell, linkColor)
-                                            Text(
-                                                text = annotated,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier
-                                                    .widthIn(min = 60.dp, max = 300.dp)
-                                                    .width(IntrinsicSize.Max)
-                                                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                                            )
-                                            if (idx < colCount - 1) {
-                                                VerticalDivider(borderColor)
-                                            }
+                            if (block.headerRow.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(IntrinsicSize.Min)
+                                        .background(headerBg),
+                                ) {
+                                    block.headerRow.forEachIndexed { idx, cell ->
+                                        val annotated = buildStyledText(cell, linkColor)
+                                        Text(
+                                            text = annotated,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        )
+                                        if (idx < colCount - 1) {
+                                            VerticalDivider(borderColor)
                                         }
                                     }
-                                    HorizontalDivider(color = borderColor)
                                 }
-                                block.rows.forEachIndexed { rowIdx, row ->
-                                    Row(
-                                        modifier = Modifier.height(IntrinsicSize.Min),
-                                    ) {
-                                        row.forEachIndexed { idx, cell ->
+                                HorizontalDivider(color = borderColor)
+                            }
+                            block.rows.forEachIndexed { rowIdx, row ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(IntrinsicSize.Min),
+                                ) {
+                                    for (colIdx in 0 until colCount) {
+                                        val cell = row.getOrNull(colIdx)
+                                        if (cell != null) {
                                             val annotated = buildStyledText(cell, linkColor)
                                             Text(
                                                 text = annotated,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 modifier = Modifier
-                                                    .widthIn(min = 60.dp, max = 300.dp)
-                                                    .width(IntrinsicSize.Max)
+                                                    .weight(1f)
                                                     .padding(horizontal = 8.dp, vertical = 6.dp),
                                             )
-                                            if (idx < colCount - 1) {
-                                                VerticalDivider(borderColor)
-                                            }
+                                        } else {
+                                            Spacer(Modifier.weight(1f))
+                                        }
+                                        if (colIdx < colCount - 1) {
+                                            VerticalDivider(borderColor)
                                         }
                                     }
-                                    if (rowIdx < block.rows.size - 1) {
-                                        HorizontalDivider(color = borderColor)
-                                    }
+                                }
+                                if (rowIdx < block.rows.size - 1) {
+                                    HorizontalDivider(color = borderColor)
                                 }
                             }
                         }
