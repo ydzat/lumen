@@ -9,4 +9,5 @@ data class UserPreferences(
     val memoryAutoRecall: Boolean = true,
     val memoryExtractionInterval: Int = 10,
     val hasCompletedOnboarding: Boolean = false,
+    val analysisMaxPerCycle: Int = 10,
 )

@@ -5,7 +5,6 @@ import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.Article_
 import com.lumen.core.database.entities.Digest
 import io.objectbox.query.QueryBuilder.StringOrder
-import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.ProjectManager
 import com.lumen.research.analyzer.ArticleAnalyzer
@@ -25,7 +24,6 @@ class CollectorManager(
     private val dataSources: List<DataSource> = emptyList(),
     private val sourceManager: SourceManager? = null,
     private val deduplicator: Deduplicator? = null,
-    private val embeddingClient: EmbeddingClient? = null,
     private val db: LumenDatabase? = null,
     private val projectManager: ProjectManager? = null,
     private val sparkEngine: SparkEngine? = null,
@@ -69,23 +67,27 @@ class CollectorManager(
             duplicatesRemoved = 0
         }
 
-        // 3. Analyze (respects budget)
-        progress?.onProgress(PipelineStage.ANALYZING, 0, afterDedup.size.coerceAtMost(analysisBudget))
-        val analyzed = if (afterDedup.isNotEmpty()) {
-            articleAnalyzer.analyzeBatch(afterDedup.take(analysisBudget))
-        } else {
-            emptyList()
+        // 2b. Persist new articles to DB for tiered processing
+        if (db != null && afterDedup.isNotEmpty()) {
+            val newArticles = afterDedup.filter { it.id == 0L }
+            if (newArticles.isNotEmpty()) {
+                db.articleBox.put(newArticles)
+            }
         }
 
-        // 4. Score
-        progress?.onProgress(PipelineStage.SCORING, 0, analyzed.size)
-        val scored = if (analyzed.isNotEmpty()) {
-            relevanceScorer.scoreBatch(analyzed)
-        } else {
-            emptyList()
-        }
+        // 3. Embed ALL (free operation)
+        progress?.onProgress(PipelineStage.EMBEDDING, 0, afterDedup.size)
+        val embeddedCount = processUnembedded()
 
-        // 5. Digest
+        // 4. Score ALL embedded (free operation)
+        progress?.onProgress(PipelineStage.SCORING, 0, 1)
+        val (scoredCount, scoredArticles) = scoreUnprocessed()
+
+        // 5. Analyze top N scored (LLM operation, respects budget)
+        progress?.onProgress(PipelineStage.ANALYZING, 0, analysisBudget)
+        val analyzedCount = analyzeTop(analysisBudget)
+
+        // 6. Digest
         progress?.onProgress(PipelineStage.DIGESTING, 0, 1)
         val today = formatEpochDate(System.currentTimeMillis())
         val digest = try {
@@ -94,7 +96,7 @@ class CollectorManager(
             null
         }
 
-        // 6. Emergency archive (if storage exceeds limit)
+        // 7. Emergency archive (if storage exceeds limit)
         val archivedCount = if (articleArchiver != null &&
             articleArchiver.needsEmergencyArchive(ArticleArchiver.DEFAULT_MAX_ARTICLES)
         ) {
@@ -109,10 +111,11 @@ class CollectorManager(
 
         return PipelineResult(
             fetched = fetchedArticles.size,
-            analyzed = analyzed.size,
-            scored = scored.size,
+            embedded = embeddedCount,
+            analyzed = analyzedCount,
+            scored = scoredCount,
             digest = digest,
-            scoredArticles = scored,
+            scoredArticles = scoredArticles,
             fetchErrors = fetchErrors,
             duplicatesRemoved = duplicatesRemoved,
             sparkKeywords = sparkKeywords,
@@ -133,38 +136,68 @@ class CollectorManager(
     }
 
     suspend fun processUnembedded(): Int {
-        if (db == null || embeddingClient == null) return 0
+        if (db == null) return 0
         val unembedded = db.articleBox.query()
-            .equal(Article_.analysisStatus, "", StringOrder.CASE_SENSITIVE)
+            .equal(Article_.analysisStatus, AnalysisStatus.NEW, StringOrder.CASE_SENSITIVE)
             .build()
             .use { it.find() }
             .filter { it.embedding.isEmpty() }
 
         var count = 0
         for (article in unembedded) {
-            val text = listOf(article.title, article.summary).filter { it.isNotBlank() }.joinToString(" ")
-            val embedding = embeddingClient.embed(text)
-            db.articleBox.put(article.copy(embedding = embedding, analysisStatus = "embedded"))
+            try {
+                articleAnalyzer.embedOnly(article)
+                count++
+            } catch (_: Exception) {
+                // Continue processing remaining articles on individual failures
+            }
+        }
+        return count
+    }
+
+    suspend fun scoreUnprocessed(): Pair<Int, List<Article>> {
+        if (db == null) return 0 to emptyList()
+        val embedded = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.EMBEDDED, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+
+        val scoredArticles = mutableListOf<Article>()
+        for (article in embedded) {
+            val scored = relevanceScorer.scoreAndPersist(article)
+            val updated = scored.copy(analysisStatus = AnalysisStatus.SCORED)
+            db.articleBox.put(updated)
+            scoredArticles.add(updated)
+        }
+        return scoredArticles.size to scoredArticles
+    }
+
+    suspend fun analyzeTop(limit: Int = 10): Int {
+        if (db == null) return 0
+        val topScored = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.SCORED, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+            .sortedByDescending { it.aiRelevanceScore }
+            .take(limit)
+
+        var count = 0
+        for (article in topScored) {
+            articleAnalyzer.analyzeWithLlm(article)
             count++
         }
         return count
     }
 
-    suspend fun analyzeTop(limit: Int = 10): Int {
-        if (db == null) return 0
-        val topUnanalyzed = db.articleBox.all
-            .filter { it.aiSummary.isBlank() && it.embedding.isNotEmpty() }
-            .sortedByDescending { it.aiRelevanceScore }
-            .take(limit)
-
-        val analyzed = articleAnalyzer.analyzeBatch(topUnanalyzed)
-        return analyzed.size
-    }
-
     suspend fun analyzeSingle(articleId: Long): Article? {
         if (db == null) return null
         val article = db.articleBox.get(articleId) ?: return null
-        return articleAnalyzer.analyze(article)
+        val toAnalyze = if (article.embedding.isEmpty()) {
+            articleAnalyzer.embedOnly(article)
+        } else {
+            article
+        }
+        return articleAnalyzer.analyzeWithLlm(toAnalyze)
     }
 
     internal fun buildFetchContext(
@@ -214,6 +247,7 @@ class CollectorManager(
 
 data class PipelineResult(
     val fetched: Int,
+    val embedded: Int = 0,
     val analyzed: Int,
     val scored: Int,
     val digest: Digest?,

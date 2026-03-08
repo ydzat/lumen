@@ -76,6 +76,7 @@ fun Route.digestRoutes() {
 
         call.respond(AnalyzeResponse(
             fetched = result.fetched,
+            embedded = result.embedded,
             analyzed = result.analyzed,
             scored = result.scored,
             digestId = result.digest?.id ?: 0L,
