@@ -3,6 +3,7 @@ package com.lumen.research.collector
 enum class PipelineStage {
     FETCHING,
     DEDUPLICATING,
+    ENRICHING,
     EMBEDDING,
     SCORING,
     ANALYZING,

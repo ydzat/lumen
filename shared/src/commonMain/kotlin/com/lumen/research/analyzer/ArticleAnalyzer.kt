@@ -23,7 +23,9 @@ class ArticleAnalyzer(
     }
 
     suspend fun embedOnly(article: Article): Article {
-        val embeddingText = listOf(article.title, article.summary).filter { it.isNotBlank() }.joinToString(" ")
+        val contentPreview = article.content.take(CONTENT_EMBED_LIMIT)
+        val embeddingText = listOf(article.title, article.summary, contentPreview)
+            .filter { it.isNotBlank() }.joinToString(" ")
         val embedding = embeddingClient.embed(embeddingText)
         val updated = article.copy(
             embedding = embedding,
@@ -79,6 +81,7 @@ class ArticleAnalyzer(
     )
 
     companion object {
+        internal const val CONTENT_EMBED_LIMIT = 1000
         internal const val SYSTEM_PROMPT = """You are a research article analyst. Analyze the given article and extract a concise summary and relevant keywords.
 
 ## Rules
