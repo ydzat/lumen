@@ -69,10 +69,9 @@ class CollectorManager(
 
         // 2b. Persist new articles to DB for tiered processing
         if (db != null && afterDedup.isNotEmpty()) {
-            for (article in afterDedup) {
-                if (article.id == 0L) {
-                    db.articleBox.put(article)
-                }
+            val newArticles = afterDedup.filter { it.id == 0L }
+            if (newArticles.isNotEmpty()) {
+                db.articleBox.put(newArticles)
             }
         }
 
@@ -146,8 +145,12 @@ class CollectorManager(
 
         var count = 0
         for (article in unembedded) {
-            articleAnalyzer.embedOnly(article)
-            count++
+            try {
+                articleAnalyzer.embedOnly(article)
+                count++
+            } catch (_: Exception) {
+                // Continue processing remaining articles on individual failures
+            }
         }
         return count
     }
