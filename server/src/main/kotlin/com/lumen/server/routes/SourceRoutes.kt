@@ -7,6 +7,7 @@ import com.lumen.server.dto.toEntity
 import com.lumen.server.plugins.NotFoundException
 import com.lumen.research.collector.RssCollector
 import com.lumen.research.collector.SourceManager
+import com.lumen.research.collector.SourceType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -77,7 +78,12 @@ fun Route.sourceRoutes() {
                 ?: throw IllegalArgumentException("Invalid source ID")
             val source = sourceManager.get(id)
                 ?: throw NotFoundException("Source not found: $id")
-            val articles = rssCollector.fetchSource(source)
+            val sourceType = SourceType.fromString(source.type)
+            val articles = if (sourceType == SourceType.RSS) {
+                rssCollector.fetchSource(source)
+            } else {
+                emptyList()
+            }
             call.respond(RefreshResponse(fetched = articles.size))
         }
     }

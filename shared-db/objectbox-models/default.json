@@ -81,7 +81,7 @@
     },
     {
       "id": "2:4653137260564483636",
-      "lastPropertyId": "11:849383771791015502",
+      "lastPropertyId": "15:387256366910641032",
       "name": "Source",
       "properties": [
         {
@@ -141,13 +141,33 @@
           "id": "11:849383771791015502",
           "name": "refreshIntervalMin",
           "type": 5
+        },
+        {
+          "id": "12:9173718158817041311",
+          "name": "config",
+          "type": 9
+        },
+        {
+          "id": "13:8487308065553434881",
+          "name": "lastError",
+          "type": 9
+        },
+        {
+          "id": "14:6032407895019520050",
+          "name": "consecutiveFailures",
+          "type": 5
+        },
+        {
+          "id": "15:387256366910641032",
+          "name": "nextRetryAt",
+          "type": 6
         }
       ],
       "relations": []
     },
     {
       "id": "3:2083761251558003683",
-      "lastPropertyId": "16:1591522405916819586",
+      "lastPropertyId": "24:8172504760767664201",
       "name": "Article",
       "properties": [
         {
@@ -238,13 +258,59 @@
           "id": "16:1591522405916819586",
           "name": "projectIds",
           "type": 9
+        },
+        {
+          "id": "17:739470385167944193",
+          "name": "doi",
+          "indexId": "19:2913585777680798410",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "18:2247057658077952600",
+          "name": "arxivId",
+          "indexId": "20:5076776415974295405",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "19:4619267398625810964",
+          "name": "analysisStatus",
+          "indexId": "21:1126771813622463222",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "20:3140015495037832080",
+          "name": "aiTranslation",
+          "type": 9
+        },
+        {
+          "id": "21:19657585341969755",
+          "name": "citationCount",
+          "type": 5
+        },
+        {
+          "id": "22:4641413990121601447",
+          "name": "influentialCitationCount",
+          "type": 5
+        },
+        {
+          "id": "23:2404891742061775052",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "24:8172504760767664201",
+          "name": "sourceType",
+          "type": 9
         }
       ],
       "relations": []
     },
     {
       "id": "4:3670977489884201084",
-      "lastPropertyId": "7:5283064180091067881",
+      "lastPropertyId": "9:5108964044337640121",
       "name": "Digest",
       "properties": [
         {
@@ -286,6 +352,16 @@
           "indexId": "10:7485888030327260848",
           "type": 6,
           "flags": 8
+        },
+        {
+          "id": "8:1316472105998477563",
+          "name": "sparks",
+          "type": 9
+        },
+        {
+          "id": "9:5108964044337640121",
+          "name": "projectSections",
+          "type": 9
         }
       ],
       "relations": []
@@ -586,7 +662,7 @@
     }
   ],
   "lastEntityId": "10:1935128386715263710",
-  "lastIndexId": "18:6207228239995082588",
+  "lastIndexId": "21:1126771813622463222",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

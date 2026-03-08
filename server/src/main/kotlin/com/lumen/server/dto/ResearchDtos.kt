@@ -24,6 +24,12 @@ data class ArticleDto(
     val aiRelevanceScore: Float,
     val keywords: String,
     val projectIds: List<Long>,
+    val doi: String = "",
+    val arxivId: String = "",
+    val analysisStatus: String = "",
+    val sourceType: String = "",
+    val citationCount: Int = 0,
+    val archived: Boolean = false,
 )
 
 @Serializable
@@ -47,13 +53,17 @@ data class SourceDto(
     val enabled: Boolean,
     val lastFetchedAt: Long,
     val createdAt: Long,
+    val config: String = "",
+    val lastError: String = "",
+    val consecutiveFailures: Int = 0,
+    val nextRetryAt: Long = 0,
 )
 
 @Serializable
 data class SourceCreateRequest(
     val name: String,
     val url: String,
-    val type: String = "rss",
+    val type: String = "RSS",
     val category: String = "",
     val description: String = "",
     val icon: String = "",
@@ -87,6 +97,8 @@ data class DigestDto(
     val sourceBreakdown: String,
     val projectId: Long,
     val createdAt: Long,
+    val sparks: String = "",
+    val projectSections: String = "",
 )
 
 @Serializable
@@ -132,6 +144,12 @@ fun Article.toDto(): ArticleDto = ArticleDto(
     aiRelevanceScore = aiRelevanceScore,
     keywords = keywords,
     projectIds = parseCsvSet(projectIds).mapNotNull { it.toLongOrNull() },
+    doi = doi,
+    arxivId = arxivId,
+    analysisStatus = analysisStatus,
+    sourceType = sourceType,
+    citationCount = citationCount,
+    archived = archived,
 )
 
 fun Source.toDto(): SourceDto = SourceDto(
@@ -146,6 +164,10 @@ fun Source.toDto(): SourceDto = SourceDto(
     enabled = enabled,
     lastFetchedAt = lastFetchedAt,
     createdAt = createdAt,
+    config = config,
+    lastError = lastError,
+    consecutiveFailures = consecutiveFailures,
+    nextRetryAt = nextRetryAt,
 )
 
 fun ResearchProject.toDto(): ProjectDto = ProjectDto(
@@ -166,6 +188,8 @@ fun Digest.toDto(): DigestDto = DigestDto(
     sourceBreakdown = sourceBreakdown,
     projectId = projectId,
     createdAt = createdAt,
+    sparks = sparks,
+    projectSections = projectSections,
 )
 
 fun SourceCreateRequest.toEntity(): Source = Source(
