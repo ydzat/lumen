@@ -121,6 +121,8 @@ private fun SettingsMainScreen(
     var language by remember { mutableStateOf(config.preferences.language) }
     var memoryAutoRecall by remember { mutableStateOf(config.preferences.memoryAutoRecall) }
     var memoryInterval by remember { mutableStateOf(config.preferences.memoryExtractionInterval.toFloat()) }
+    var analysisMax by remember { mutableStateOf(config.preferences.analysisMaxPerCycle.toFloat()) }
+    var dailyBudget by remember { mutableStateOf(config.preferences.dailyArticleBudget.toFloat()) }
     var themeExpanded by remember { mutableStateOf(false) }
     var languageExpanded by remember { mutableStateOf(false) }
 
@@ -238,6 +240,8 @@ private fun SettingsMainScreen(
                                 language = language,
                                 memoryAutoRecall = memoryAutoRecall,
                                 memoryExtractionInterval = memoryInterval.toInt(),
+                                analysisMaxPerCycle = analysisMax.toInt(),
+                                dailyArticleBudget = dailyBudget.toInt(),
                             ),
                         )
                         configStore.save(updatedConfig)
@@ -373,6 +377,30 @@ private fun SettingsMainScreen(
                 onValueChange = { memoryInterval = it },
                 valueRange = 5f..30f,
                 steps = 24,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Daily article budget
+            Text("Daily Article Budget: ${dailyBudget.toInt()}")
+            Slider(
+                value = dailyBudget,
+                onValueChange = { dailyBudget = it },
+                valueRange = 20f..500f,
+                steps = 23,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Analysis max per cycle
+            Text("Analysis Max Per Cycle: ${analysisMax.toInt()}")
+            Slider(
+                value = analysisMax,
+                onValueChange = { analysisMax = it },
+                valueRange = 1f..50f,
+                steps = 48,
                 modifier = Modifier.fillMaxWidth(),
             )
 

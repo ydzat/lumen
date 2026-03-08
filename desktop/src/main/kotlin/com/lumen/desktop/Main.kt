@@ -37,6 +37,7 @@ fun main() {
     val koin = GlobalContext.get()
     koin.get<PersonaManager>().seedBuiltInPersonas()
     koin.get<SourceManager>().seedDefaultsIfEmpty()
+    koin.get<SourceManager>().seedNewDefaults()
     val config = koin.get<ConfigStore>().load()
     ThemeState.mode = config.preferences.theme
     application {

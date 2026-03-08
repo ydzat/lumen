@@ -129,9 +129,11 @@ class SourceManagerTest {
         val names = sources.map { it.name }.toSet()
         assertTrue("arXiv CS.AI" in names)
         assertTrue("arXiv CS.LG" in names)
-        assertTrue("arXiv CS.CL" in names)
-        assertTrue("arXiv CS.CV" in names)
         assertTrue("Hacker News" in names)
+        assertTrue("Semantic Scholar" in names)
+        assertTrue("Anthropic Blog" in names)
+        assertTrue("OpenAI Blog" in names)
+        assertTrue("GitHub Releases" in names)
     }
 
     @Test
@@ -142,5 +144,45 @@ class SourceManagerTest {
 
         assertEquals(1, manager.listAll().size)
         assertEquals("Existing", manager.listAll()[0].name)
+    }
+
+    @Test
+    fun defaultSources_containsExpectedTypes() {
+        val types = SourceManager.DEFAULT_SOURCES.map { it.type }.toSet()
+        assertTrue("ARXIV_API" in types)
+        assertTrue("SEMANTIC_SCHOLAR" in types)
+        assertTrue("RSS" in types)
+        assertTrue("GITHUB_RELEASES" in types)
+    }
+
+    @Test
+    fun seedNewDefaults_addsNewSourcesWithoutDuplicating() {
+        manager.seedDefaultsIfEmpty()
+        val initialCount = manager.listAll().size
+
+        manager.seedNewDefaults()
+
+        assertEquals(initialCount, manager.listAll().size)
+    }
+
+    @Test
+    fun seedNewDefaults_preservesExistingUserSources() {
+        manager.add(Source(name = "My Custom Feed", url = "https://custom.example.com/feed", type = "RSS"))
+        manager.seedNewDefaults()
+
+        val all = manager.listAll()
+        val customSource = all.find { it.name == "My Custom Feed" }
+        assertNotNull(customSource)
+        assertEquals(SourceManager.DEFAULT_SOURCES.size + 1, all.size)
+    }
+
+    @Test
+    fun seedNewDefaults_onFreshInstall_noOpAfterSeed() {
+        manager.seedDefaultsIfEmpty()
+        val countAfterSeed = manager.listAll().size
+
+        manager.seedNewDefaults()
+
+        assertEquals(countAfterSeed, manager.listAll().size)
     }
 }
