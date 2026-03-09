@@ -4,7 +4,6 @@ import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.MyObjectBox
 import com.lumen.core.database.entities.Source
 import kotlinx.coroutines.runBlocking
-import org.junit.Assume.assumeTrue
 import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -16,7 +15,7 @@ import kotlin.test.assertTrue
  * Tests the FULL flow: fetch RSS XML -> parse via RssParser -> processChannel -> persist to DB.
  * This catches issues that raw HTTP tests miss (e.g., parser failures, empty items, null links).
  *
- * Requires network access; skipped in CI (set CI=true to skip).
+ * Requires network access; excluded from CI via Gradle filter.
  * Run manually: ./gradlew :shared:jvmTest --tests "*.RssDataSourceIntegrationTest"
  */
 class RssDataSourceIntegrationTest {
@@ -27,7 +26,6 @@ class RssDataSourceIntegrationTest {
 
     @BeforeTest
     fun setup() {
-        assumeTrue("Skipping integration test in CI (no stable network)", System.getenv("CI") == null)
         tempDir = File(System.getProperty("java.io.tmpdir"), "objectbox-rss-integ-${System.nanoTime()}")
         tempDir.mkdirs()
         val store = MyObjectBox.builder().baseDirectory(tempDir).build()

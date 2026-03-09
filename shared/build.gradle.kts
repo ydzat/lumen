@@ -112,3 +112,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+// Exclude network-dependent integration tests in CI
+tasks.withType<Test> {
+    if (System.getenv("CI") != null) {
+        exclude("**/RssDataSourceIntegrationTest*")
+        exclude("**/FeedFetchIntegrationTest*")
+    }
+}

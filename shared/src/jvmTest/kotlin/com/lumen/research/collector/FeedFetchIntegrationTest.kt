@@ -7,26 +7,16 @@ import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import com.prof18.rssparser.RssParser
 import kotlinx.coroutines.runBlocking
-import org.junit.Assume.assumeTrue
-import org.junit.BeforeClass
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
  * Integration tests that actually fetch from each configured feed.
  * These tests require network access and may fail if feeds are unreachable.
- * Skipped in CI (set CI=true to skip).
+ * Excluded from CI via Gradle filter.
  * Run manually to diagnose feed issues: ./gradlew :shared:jvmTest --tests "*.FeedFetchIntegrationTest"
  */
 class FeedFetchIntegrationTest {
-
-    companion object {
-        @JvmStatic
-        @BeforeClass
-        fun checkCi() {
-            assumeTrue("Skipping integration test in CI (no stable network)", System.getenv("CI") == null)
-        }
-    }
 
     private val httpClient = HttpClient(CIO) {
         engine {
