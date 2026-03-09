@@ -32,12 +32,19 @@ class ArxivApiDataSource(
         var remainingBudget = context.remainingBudget
         val existingArxivIds = queryExistingArxivIds()
 
+        val perSourceCap = if (sources.isNotEmpty()) {
+            (context.remainingBudget / sources.size).coerceAtLeast(MIN_PER_SOURCE)
+        } else {
+            context.remainingBudget
+        }
+
         for ((index, source) in sources.withIndex()) {
             if (remainingBudget <= 0) break
             if (index > 0) delay(RATE_LIMIT_MS)
 
             try {
-                val url = buildQueryUrl(source, context, remainingBudget)
+                val limit = remainingBudget.coerceAtMost(perSourceCap)
+                val url = buildQueryUrl(source, context, limit)
                 val response = httpClient.get(url)
                 if (!response.status.isSuccess()) {
                     errors.add("arXiv API error for ${source.name}: HTTP ${response.status.value}")
@@ -50,7 +57,7 @@ class ArxivApiDataSource(
                 val now = System.currentTimeMillis()
 
                 val newArticles = parsed.filter { it.arxivId !in existingArxivIds }
-                    .take(remainingBudget)
+                    .take(limit)
                     .map { it.copy(sourceId = source.id, fetchedAt = now) }
 
                 if (newArticles.isNotEmpty()) {
@@ -74,18 +81,35 @@ class ArxivApiDataSource(
         val config = parseConfig(source.config)
         val queryParts = mutableListOf<String>()
 
+        // 1. Category filter: from config, or extracted from source URL, or default
         val categories = config?.categories ?: emptyList()
         if (categories.isNotEmpty()) {
             val catQuery = categories.joinToString("+OR+") { "cat:$it" }
             queryParts.add("($catQuery)")
+        } else {
+            val urlCategory = extractCategoryFromUrl(source.url)
+            if (urlCategory != null) {
+                queryParts.add("(cat:$urlCategory)")
+            }
         }
 
+        // 2. Keyword filter: sanitize multi-word keywords for arXiv query syntax
         val keywords = context.keywords
         if (keywords.isNotEmpty()) {
-            val kwQuery = keywords.joinToString("+OR+") { "all:$it" }
-            queryParts.add("($kwQuery)")
+            val sanitized = keywords
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .map { kw ->
+                    // Replace spaces with _ for arXiv query syntax (multi-word terms)
+                    val escaped = kw.replace(" ", "_")
+                    "all:$escaped"
+                }
+            if (sanitized.isNotEmpty()) {
+                queryParts.add("(${sanitized.joinToString("+OR+")})")
+            }
         }
 
+        // 3. Fallback: use source URL directly or default category
         if (queryParts.isEmpty()) {
             val sourceUrl = source.url
             if (sourceUrl.startsWith("http")) return sourceUrl
@@ -171,11 +195,13 @@ class ArxivApiDataSource(
     companion object {
         const val BASE_URL = "https://export.arxiv.org/api/query"
         const val RATE_LIMIT_MS = 3000L
+        const val MIN_PER_SOURCE = 5
         const val MAX_RESULTS_DEFAULT = 50
 
         private const val ATOM_NS = "http://www.w3.org/2005/Atom"
         private const val ARXIV_NS = "http://arxiv.org/schemas/atom"
 
+        private val CATEGORY_PATTERN = Regex("""cat:([a-zA-Z-]+\.[a-zA-Z-]+)""")
         private val ARXIV_ID_PATTERN = Regex("""arxiv\.org/abs/(\d+\.\d+)(v\d+)?""")
         private val VERSION_SUFFIX_PATTERN = Regex("v\\d+$")
         private val WHITESPACE_PATTERN = Regex("\\s+")
@@ -186,6 +212,10 @@ class ArxivApiDataSource(
         }
 
         private val json = Json { ignoreUnknownKeys = true }
+
+        internal fun extractCategoryFromUrl(url: String): String? {
+            return CATEGORY_PATTERN.find(url)?.groupValues?.get(1)
+        }
 
         internal fun extractArxivId(idUrl: String): String {
             val match = ARXIV_ID_PATTERN.find(idUrl)

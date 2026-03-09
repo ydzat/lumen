@@ -81,13 +81,22 @@ val researchModule = module {
     single { RssDataSource(get()) }
     single { SourceManager(get()) }
     single { ProjectManager(get(), get()) }
-    single { ArticleAnalyzer(get(), get(), get()) }
+    single {
+        val language = get<ConfigStore>().load().preferences.language
+        ArticleAnalyzer(get(), get(), get(), language)
+    }
     single { DeepAnalysisService(get(), get()) }
     single { RelevanceScorer(get(), getOrNull()) }
-    single { DigestGenerator(get(), get(), getOrNull(), getOrNull(), getOrNull()) }
+    single {
+        val language = get<ConfigStore>().load().preferences.language
+        DigestGenerator(get(), get(), getOrNull(), getOrNull(), getOrNull(), language)
+    }
     single { DigestFormatter() }
     single { Deduplicator(get()) }
-    single { SparkEngine(get(), get(), getOrNull()) }
+    single {
+        val language = get<ConfigStore>().load().preferences.language
+        SparkEngine(get(), get(), getOrNull(), language)
+    }
     single { ArticleArchiver(get(), getOrNull()) }
     single {
         ArxivApiDataSource(

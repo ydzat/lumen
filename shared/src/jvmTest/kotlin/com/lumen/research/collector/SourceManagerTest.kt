@@ -132,7 +132,12 @@ class SourceManagerTest {
         assertTrue("Hacker News" in names)
         assertTrue("Semantic Scholar" in names)
         assertTrue("OpenAI Blog" in names)
-        assertTrue("GitHub Releases" in names)
+        assertTrue("GitHub Blog" in names)
+        assertTrue("Anthropic News" in names)
+        assertTrue("Hugging Face Blog" in names)
+        assertTrue("Google DeepMind" in names)
+        assertTrue("MIT Technology Review" in names)
+        assertTrue("量子位" in names)
     }
 
     @Test
@@ -151,7 +156,8 @@ class SourceManagerTest {
         assertTrue("ARXIV_API" in types)
         assertTrue("SEMANTIC_SCHOLAR" in types)
         assertTrue("RSS" in types)
-        assertTrue("GITHUB_RELEASES" in types)
+        // GitHub Blog is now RSS type, no GITHUB_RELEASES in defaults
+        assertEquals(setOf("ARXIV_API", "SEMANTIC_SCHOLAR", "RSS"), types)
     }
 
     @Test

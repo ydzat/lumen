@@ -36,7 +36,8 @@ class GitHubReleasesDataSource(
 
             try {
                 val config = parseConfig(source.config)
-                val repos = config?.repos ?: emptyList()
+                val repos = config?.repos?.takeIf { it.isNotEmpty() }
+                    ?: parseReposFromUrl(source.url)
                 val includePrerelease = config?.includePrerelease ?: false
                 val perRepoLimit = config?.maxReleasesPerRepo ?: MAX_PER_REPO_DEFAULT
 
@@ -142,6 +143,13 @@ class GitHubReleasesDataSource(
             } catch (_: Exception) {
                 0L
             }
+        }
+
+        internal fun parseReposFromUrl(url: String): List<String> {
+            if (url.isBlank()) return emptyList()
+            return url.split(",")
+                .map { it.trim() }
+                .filter { REPO_PATTERN.matches(it) }
         }
 
         internal fun parseConfig(configJson: String): GitHubReleasesSourceConfig? {

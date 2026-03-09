@@ -35,8 +35,8 @@ class CollectorManager(
 ) {
 
     suspend fun runPipeline(
-        analysisBudget: Int = 10,
-        fetchBudget: Int = 100,
+        analysisBudget: Int = 20,
+        fetchBudget: Int = 150,
         progress: PipelineProgress? = null,
     ): PipelineResult {
         // 0. Generate spark keywords (cross-project discovery)
@@ -185,7 +185,11 @@ class CollectorManager(
                 progress?.onProgress(PipelineStage.EMBEDDING, embeddedCount, unembedded.size)
 
                 val scored = relevanceScorer.scoreAndPersist(embedded)
-                val updated = scored.copy(analysisStatus = AnalysisStatus.SCORED)
+                val projectIds = relevanceScorer.assignToProjects(scored)
+                val updated = scored.copy(
+                    analysisStatus = AnalysisStatus.SCORED,
+                    projectIds = projectIds.joinToString(","),
+                )
                 db.articleBox.put(updated)
                 scoredArticles.add(updated)
             } catch (_: Exception) {
@@ -201,7 +205,11 @@ class CollectorManager(
         for (article in previouslyEmbedded) {
             try {
                 val scored = relevanceScorer.scoreAndPersist(article)
-                val updated = scored.copy(analysisStatus = AnalysisStatus.SCORED)
+                val projectIds = relevanceScorer.assignToProjects(scored)
+                val updated = scored.copy(
+                    analysisStatus = AnalysisStatus.SCORED,
+                    projectIds = projectIds.joinToString(","),
+                )
                 db.articleBox.put(updated)
                 scoredArticles.add(updated)
             } catch (_: Exception) {
@@ -212,14 +220,24 @@ class CollectorManager(
         return Triple(embeddedCount, scoredArticles.size, scoredArticles)
     }
 
-    suspend fun analyzeTop(limit: Int = 10, progress: PipelineProgress? = null): Int {
+    suspend fun analyzeTop(limit: Int = 20, progress: PipelineProgress? = null): Int {
         if (db == null) return 0
-        val topScored = db.articleBox.query()
+        val allScored = db.articleBox.query()
             .equal(Article_.analysisStatus, AnalysisStatus.SCORED, StringOrder.CASE_SENSITIVE)
             .build()
             .use { it.find() }
-            .sortedByDescending { it.aiRelevanceScore }
-            .take(limit)
+
+        if (allScored.isEmpty()) return 0
+
+        val hasRelevanceSignal = allScored.any { it.aiRelevanceScore > 0f }
+
+        val topScored = if (hasRelevanceSignal) {
+            // Normal mode: pick top N by relevance
+            allScored.sortedByDescending { it.aiRelevanceScore }.take(limit)
+        } else {
+            // No projects / no memory: distribute budget evenly across sources
+            selectRoundRobin(allScored, limit)
+        }
 
         if (topScored.isEmpty()) return 0
 
@@ -292,14 +310,13 @@ class CollectorManager(
     }
 
     internal fun buildFetchContext(
-        budget: Int = 100,
+        budget: Int = 150,
         sparkKeywords: Set<String> = emptySet(),
     ): FetchContext {
         val allProjects = projectManager?.listAll() ?: emptyList()
-        val activeProjects = allProjects.filter { it.isActive }
-        val keywords = activeProjects.flatMap { parseCsvSet(it.keywords) }.toSet()
+        val keywords = allProjects.flatMap { parseCsvSet(it.keywords) }.toSet()
         return FetchContext(
-            activeProjects = activeProjects,
+            activeProjects = allProjects,
             keywords = keywords,
             categories = emptySet(),
             remainingBudget = budget,
@@ -345,6 +362,23 @@ class CollectorManager(
         }
 
         return results.flatMap { it.articles } to results.flatMap { it.errors }
+    }
+
+    internal fun selectRoundRobin(articles: List<Article>, limit: Int): List<Article> {
+        val bySource = articles.groupBy { it.sourceId }
+        val sourceQueues = bySource.values
+            .map { it.sortedByDescending { a -> a.fetchedAt }.toMutableList() }
+            .sortedByDescending { it.size }
+        val result = mutableListOf<Article>()
+        var idx = 0
+        while (result.size < limit && sourceQueues.any { it.isNotEmpty() }) {
+            val queue = sourceQueues[idx % sourceQueues.size]
+            if (queue.isNotEmpty()) {
+                result.add(queue.removeFirst())
+            }
+            idx++
+        }
+        return result
     }
 
     companion object {

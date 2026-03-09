@@ -161,14 +161,16 @@ class ArxivApiDataSourceTest {
     }
 
     @Test
-    fun buildQueryUrl_withSourceUrl_fallsBack() {
+    fun buildQueryUrl_withSourceUrl_extractsCategory() {
         val ds = createDataSource("")
         val source = Source(name = "arXiv", url = "https://export.arxiv.org/api/query?search_query=cat:cs.CV", type = "ARXIV_API")
         val context = createContext()
 
         val url = ds.buildQueryUrl(source, context, 50)
 
-        assertEquals("https://export.arxiv.org/api/query?search_query=cat:cs.CV", url)
+        assertTrue(url.contains("cat:cs.CV"), "URL should contain extracted category cs.CV")
+        assertTrue(url.contains("sortBy=submittedDate"), "URL should have sort parameters")
+        assertTrue(url.contains("max_results=50"), "URL should respect budget limit")
     }
 
     @Test

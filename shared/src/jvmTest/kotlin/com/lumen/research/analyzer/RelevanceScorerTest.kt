@@ -201,4 +201,105 @@ class RelevanceScorerTest {
         assertTrue(score > 0f)
         assertTrue(score <= 1f)
     }
+
+    @Test
+    fun score_withInactiveProject_stillScoresPositive() = runBlocking {
+        val projectEmbedding = makeEmbedding(1.0f)
+        db.researchProjectBox.put(ResearchProject(
+            name = "Inactive Project",
+            embedding = projectEmbedding,
+            isActive = false,
+        ))
+
+        val scorer = RelevanceScorer(db, null)
+        val article = Article(
+            title = "Test",
+            url = "https://example.com",
+            embedding = makeSimilarEmbedding(projectEmbedding),
+        )
+
+        val score = scorer.score(article)
+
+        assertTrue(score > 0f, "Inactive projects should still be used for scoring")
+    }
+
+    @Test
+    fun assignToProjects_returnsMatchingProjectIds() {
+        val embedding1 = makeEmbedding(1.0f)
+        val embedding2 = makeEmbedding(5.0f)
+        val pid1 = db.researchProjectBox.put(ResearchProject(
+            name = "Project A",
+            embedding = embedding1,
+        ))
+        db.researchProjectBox.put(ResearchProject(
+            name = "Project B",
+            embedding = embedding2,
+        ))
+
+        val scorer = RelevanceScorer(db, null)
+        val article = Article(
+            title = "Related to A",
+            url = "https://example.com",
+            embedding = makeSimilarEmbedding(embedding1),
+        )
+
+        val assigned = scorer.assignToProjects(article)
+
+        assertTrue(pid1 in assigned, "Should be assigned to similar project")
+    }
+
+    @Test
+    fun assignToProjects_relativeThreshold_excludesDistantProject() {
+        val embeddingA = makeEmbedding(1.0f)
+        val embeddingB = makeDissimilarEmbedding(embeddingA)
+        val pidA = db.researchProjectBox.put(ResearchProject(
+            name = "Project A",
+            embedding = embeddingA,
+        ))
+        val pidB = db.researchProjectBox.put(ResearchProject(
+            name = "Project B",
+            embedding = embeddingB,
+        ))
+
+        val scorer = RelevanceScorer(db, null)
+        val article = Article(
+            title = "Very related to A only",
+            url = "https://example.com",
+            embedding = makeSimilarEmbedding(embeddingA, noise = 0.005f),
+        )
+
+        val assigned = scorer.assignToProjects(article)
+
+        assertTrue(pidA in assigned, "Should be assigned to highly similar project A")
+        assertTrue(pidB !in assigned, "Should NOT be assigned to dissimilar project B")
+    }
+
+    @Test
+    fun assignToProjects_emptyEmbedding_returnsEmpty() {
+        db.researchProjectBox.put(ResearchProject(
+            name = "Project",
+            embedding = makeEmbedding(1.0f),
+        ))
+
+        val scorer = RelevanceScorer(db, null)
+        val article = Article(title = "No Embedding", url = "https://example.com")
+
+        val assigned = scorer.assignToProjects(article)
+
+        assertTrue(assigned.isEmpty())
+    }
+
+    @Test
+    fun assignToProjects_noProjects_returnsEmpty() {
+        val scorer = RelevanceScorer(db, null)
+        val article = Article(
+            title = "Test",
+            url = "https://example.com",
+            embedding = makeEmbedding(1.0f),
+        )
+
+        val assigned = scorer.assignToProjects(article)
+
+        assertTrue(assigned.isEmpty())
+    }
 }

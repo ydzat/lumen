@@ -87,6 +87,15 @@ class SourceManager(private val db: LumenDatabase) {
         }
     }
 
+    fun resetAllFailures() {
+        val failed = db.sourceBox.all.filter { it.consecutiveFailures > 0 }
+        if (failed.isNotEmpty()) {
+            db.sourceBox.put(failed.map {
+                it.copy(consecutiveFailures = 0, lastError = "", nextRetryAt = 0)
+            })
+        }
+    }
+
     companion object {
         val DEFAULT_SOURCES = listOf(
             Source(
@@ -119,17 +128,52 @@ class SourceManager(private val db: LumenDatabase) {
             ),
             Source(
                 name = "OpenAI Blog",
-                url = "https://openai.com/blog/rss.xml",
+                url = "https://openai.com/news/rss.xml",
                 type = "RSS",
                 category = "tech",
                 description = "OpenAI research and announcements",
             ),
             Source(
-                name = "GitHub Releases",
-                url = "pytorch/pytorch,huggingface/transformers",
-                type = "GITHUB_RELEASES",
+                name = "GitHub Blog",
+                url = "https://github.blog/feed/",
+                type = "RSS",
                 category = "tech",
-                description = "Release tracking for key ML repositories",
+                description = "GitHub product announcements and features",
+            ),
+            Source(
+                name = "Anthropic News",
+                url = "https://raw.githubusercontent.com/taobojlen/anthropic-rss-feed/main/anthropic_news_rss.xml",
+                type = "RSS",
+                category = "tech",
+                description = "Anthropic news and announcements (community-maintained)",
+            ),
+            Source(
+                name = "Hugging Face Blog",
+                url = "https://huggingface.co/blog/feed.xml",
+                type = "RSS",
+                category = "tech",
+                description = "Open-source AI models, datasets and tools",
+            ),
+            Source(
+                name = "Google DeepMind",
+                url = "https://deepmind.google/blog/rss.xml",
+                type = "RSS",
+                category = "tech",
+                description = "Google DeepMind research and product news",
+            ),
+            Source(
+                name = "MIT Technology Review",
+                url = "https://www.technologyreview.com/feed/",
+                type = "RSS",
+                category = "tech",
+                description = "Technology and AI industry analysis",
+            ),
+            Source(
+                name = "量子位",
+                url = "https://www.qbitai.com/feed",
+                type = "RSS",
+                category = "tech",
+                description = "中文AI资讯，追踪人工智能新趋势",
             ),
         )
     }

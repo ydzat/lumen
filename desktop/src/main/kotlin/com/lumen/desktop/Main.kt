@@ -22,8 +22,10 @@ import com.lumen.core.di.documentModule
 import com.lumen.core.di.memoryModule
 import com.lumen.core.di.platformModule
 import com.lumen.core.di.researchModule
+import com.lumen.ui.i18n.ProvideStrings
 import com.lumen.ui.navigation.Tab
 import com.lumen.ui.navigation.TabContent
+import com.lumen.ui.navigation.localizedLabel
 import com.lumen.ui.screen.OnboardingScreen
 import com.lumen.ui.theme.LumenTheme
 import com.lumen.ui.theme.ThemeState
@@ -38,6 +40,7 @@ fun main() {
     koin.get<PersonaManager>().seedBuiltInPersonas()
     koin.get<SourceManager>().seedDefaultsIfEmpty()
     koin.get<SourceManager>().seedNewDefaults()
+    koin.get<SourceManager>().resetAllFailures()
     val config = koin.get<ConfigStore>().load()
     ThemeState.mode = config.preferences.theme
     application {
@@ -46,25 +49,27 @@ fun main() {
             title = "Lumen",
         ) {
             LumenTheme {
-                var showOnboarding by remember { mutableStateOf(!config.preferences.hasCompletedOnboarding) }
+                ProvideStrings {
+                    var showOnboarding by remember { mutableStateOf(!config.preferences.hasCompletedOnboarding) }
 
-                if (showOnboarding) {
-                    OnboardingScreen(onComplete = { showOnboarding = false })
-                } else {
-                    var selectedTab by remember { mutableStateOf(Tab.Home) }
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        NavigationRail {
-                            Tab.entries.forEach { tab ->
-                                NavigationRailItem(
-                                    selected = selectedTab == tab,
-                                    onClick = { selectedTab = tab },
-                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                    label = { Text(tab.label) },
-                                )
+                    if (showOnboarding) {
+                        OnboardingScreen(onComplete = { showOnboarding = false })
+                    } else {
+                        var selectedTab by remember { mutableStateOf(Tab.Home) }
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            NavigationRail {
+                                Tab.entries.forEach { tab ->
+                                    NavigationRailItem(
+                                        selected = selectedTab == tab,
+                                        onClick = { selectedTab = tab },
+                                        icon = { Icon(tab.icon, contentDescription = tab.localizedLabel) },
+                                        label = { Text(tab.localizedLabel) },
+                                    )
+                                }
                             }
-                        }
-                        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                            TabContent(selectedTab)
+                            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                                TabContent(selectedTab)
+                            }
                         }
                     }
                 }

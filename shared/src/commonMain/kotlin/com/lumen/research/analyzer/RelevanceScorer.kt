@@ -3,7 +3,6 @@ package com.lumen.research.analyzer
 import com.lumen.core.database.LumenDatabase
 import com.lumen.core.database.entities.Article
 import com.lumen.core.database.entities.ResearchProject
-import com.lumen.core.database.entities.ResearchProject_
 import com.lumen.core.memory.MemoryManager
 import com.lumen.core.memory.cosineSimilarity
 import com.lumen.research.parseCsvSet
@@ -16,24 +15,24 @@ class RelevanceScorer(
     suspend fun score(article: Article): Float {
         if (article.embedding.isEmpty()) return 0f
 
-        val activeProject = db.researchProjectBox.query()
-            .equal(ResearchProject_.isActive, true)
-            .build()
-            .use { it.findFirst() }
-        val hasProject = activeProject != null && activeProject.embedding.isNotEmpty()
+        val allProjects = db.researchProjectBox.all
+            .filter { it.embedding.isNotEmpty() }
+        val hasProject = allProjects.isNotEmpty()
         val hasMemory = memoryManager != null
 
         if (!hasProject && !hasMemory) return 0f
 
         val projectScore = if (hasProject) {
-            cosineSimilarity(article.embedding, activeProject!!.embedding).coerceIn(0f, 1f)
+            allProjects.maxOf { project ->
+                cosineSimilarity(article.embedding, project.embedding).coerceIn(0f, 1f)
+            }
         } else 0f
 
         val memoryScore = if (hasMemory) {
             computeMemoryScore(article)
         } else 0f
 
-        val keywordBoost = computeKeywordBoost(article, activeProject)
+        val keywordBoost = computeKeywordBoost(article, allProjects)
 
         val score = when {
             hasProject && hasMemory -> projectScore * 0.6f + memoryScore * 0.3f + keywordBoost * 0.1f
@@ -42,6 +41,26 @@ class RelevanceScorer(
         }
 
         return score.coerceIn(0f, 1f)
+    }
+
+    fun assignToProjects(article: Article): Set<Long> {
+        if (article.embedding.isEmpty()) return emptySet()
+        val allProjects = db.researchProjectBox.all
+            .filter { it.embedding.isNotEmpty() }
+        if (allProjects.isEmpty()) return emptySet()
+
+        val similarities = allProjects.map { project ->
+            project.id to cosineSimilarity(article.embedding, project.embedding).coerceIn(0f, 1f)
+        }
+        val maxSim = similarities.maxOf { it.second }
+        if (maxSim < MIN_ASSIGN_THRESHOLD) return emptySet()
+
+        // Only assign to projects within RELATIVE_FACTOR of the best match
+        val relativeThreshold = maxSim * RELATIVE_FACTOR
+        return similarities
+            .filter { it.second >= relativeThreshold && it.second >= MIN_ASSIGN_THRESHOLD }
+            .map { it.first }
+            .toSet()
     }
 
     suspend fun scoreAndPersist(article: Article): Article {
@@ -70,13 +89,13 @@ class RelevanceScorer(
         return if (similarities.isEmpty()) 0f else similarities.average().toFloat()
     }
 
-    private fun computeKeywordBoost(article: Article, activeProject: ResearchProject?): Float {
+    private fun computeKeywordBoost(article: Article, projects: List<ResearchProject>): Float {
         val articleKeywords = parseCsvSet(article.keywords)
         if (articleKeywords.isEmpty()) return 0f
 
         val referenceKeywords = mutableSetOf<String>()
-        if (activeProject != null) {
-            referenceKeywords.addAll(parseCsvSet(activeProject.keywords))
+        for (project in projects) {
+            referenceKeywords.addAll(parseCsvSet(project.keywords))
         }
 
         if (referenceKeywords.isEmpty()) return 0f
@@ -87,4 +106,8 @@ class RelevanceScorer(
         return (overlap.toFloat() / articleKeywords.size).coerceIn(0f, 1f)
     }
 
+    companion object {
+        const val MIN_ASSIGN_THRESHOLD = 0.3f
+        const val RELATIVE_FACTOR = 0.85f
+    }
 }

@@ -50,7 +50,12 @@ class ScholarDataSource(
                 val query = keywords.joinToString(" ")
                 val url = buildSearchUrl(query, limit)
 
-                val response = httpClient.get(url)
+                var response = httpClient.get(url)
+                // Retry once on rate limit (429)
+                if (response.status.value == 429) {
+                    delay(RETRY_DELAY_MS)
+                    response = httpClient.get(url)
+                }
                 if (!response.status.isSuccess()) {
                     errors.add("Semantic Scholar error for ${source.name}: HTTP ${response.status.value}")
                     failedIds.add(source.id)
@@ -146,6 +151,7 @@ class ScholarDataSource(
     companion object {
         internal const val BASE_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
         internal const val RATE_LIMIT_MS = 3000L
+        private const val RETRY_DELAY_MS = 5000L
         internal const val MAX_RESULTS_DEFAULT = 50
         private const val API_MAX_LIMIT = 100
 

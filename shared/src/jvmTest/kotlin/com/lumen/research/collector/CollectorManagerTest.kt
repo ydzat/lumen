@@ -204,7 +204,7 @@ class CollectorManagerTest {
 
         assertTrue(context.activeProjects.isEmpty())
         assertTrue(context.keywords.isEmpty())
-        assertEquals(100, context.remainingBudget)
+        assertEquals(150, context.remainingBudget)
     }
 
     @Test

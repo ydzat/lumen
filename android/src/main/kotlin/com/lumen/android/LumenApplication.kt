@@ -22,5 +22,6 @@ class LumenApplication : Application() {
         GlobalContext.get().get<PersonaManager>().seedBuiltInPersonas()
         GlobalContext.get().get<SourceManager>().seedDefaultsIfEmpty()
         GlobalContext.get().get<SourceManager>().seedNewDefaults()
+        GlobalContext.get().get<SourceManager>().resetAllFailures()
     }
 }
