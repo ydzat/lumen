@@ -16,6 +16,10 @@ actual class ModelResourceLoader {
         return extractResource("$MODEL_DIR/$TOKENIZER_FILE", File(modelsDir, TOKENIZER_FILE))
     }
 
+    actual fun getVocabPath(): String {
+        return extractResource("$MODEL_DIR/$VOCAB_FILE", File(modelsDir, VOCAB_FILE))
+    }
+
     private fun extractResource(resourcePath: String, target: File): String {
         if (!target.exists()) {
             val stream = javaClass.classLoader.getResourceAsStream(resourcePath)

@@ -208,7 +208,23 @@ class ArxivApiDataSource(
 
         private val xmlFactory = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = true
-            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            // XXE prevention hardening.
+            // JVM (Xerces): supports disallow-doctype-decl — the strictest guard.
+            // Android (Harmony XML): does not support any of these features, but
+            // is secure by default since API 24 (external entities disabled).
+            val xxeFeatures = mapOf(
+                "http://apache.org/xml/features/disallow-doctype-decl" to true,
+                "http://xml.org/sax/features/external-general-entities" to false,
+                "http://xml.org/sax/features/external-parameter-entities" to false,
+                "http://javax.xml.XMLConstants/feature/secure-processing" to true,
+            )
+            for ((feature, value) in xxeFeatures) {
+                try {
+                    setFeature(feature, value)
+                } catch (_: Exception) {
+                    // Feature not supported on this XML parser implementation
+                }
+            }
         }
 
         private val json = Json { ignoreUnknownKeys = true }

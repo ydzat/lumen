@@ -17,6 +17,10 @@ actual class ModelResourceLoader(private val context: Context) {
         return extractAsset("$MODEL_DIR/$TOKENIZER_FILE", File(modelsDir, TOKENIZER_FILE))
     }
 
+    actual fun getVocabPath(): String {
+        return extractAsset("$MODEL_DIR/$VOCAB_FILE", File(modelsDir, VOCAB_FILE))
+    }
+
     private fun extractAsset(assetPath: String, target: File): String {
         if (!target.exists()) {
             val tmpFile = File(target.parentFile, "${target.name}.tmp")

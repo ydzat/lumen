@@ -27,18 +27,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
       - name: Build shared module
         run: ./gradlew :shared:compileKotlinJvm --no-daemon
+
+      - name: Compile Android app
+        run: ./gradlew :android:compileDebugKotlin --no-daemon
 
       - name: Run tests
         run: ./gradlew :shared:jvmTest --no-daemon

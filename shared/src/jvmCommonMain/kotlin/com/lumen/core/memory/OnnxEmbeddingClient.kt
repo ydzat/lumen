@@ -1,6 +1,8 @@
 package com.lumen.core.memory
 
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer
+import ai.djl.modality.nlp.DefaultVocabulary
+import ai.djl.modality.nlp.bert.BertFullTokenizer
 import com.lumen.core.database.entities.EMBEDDING_DIMENSIONS
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
@@ -32,20 +34,31 @@ class OnnxEmbeddingClient(
                 }
             }
             env.createSession(resourceLoader.getModelPath(), opts)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             System.err.println("WARNING: ONNX model failed to load, memory features disabled: ${e.message}")
             available = false
             null
         }
     }
 
-    private val tokenizer: HuggingFaceTokenizer? by lazy {
+    private val tokenizer: TokenizerWrapper? by lazy {
+        // Try native HuggingFace tokenizer first (fast, requires Rust native lib)
         try {
-            HuggingFaceTokenizer.newInstance(Path.of(resourceLoader.getTokenizerPath()))
-        } catch (e: Exception) {
-            System.err.println("WARNING: Tokenizer failed to load, memory features disabled: ${e.message}")
-            available = false
-            null
+            val hf = HuggingFaceTokenizer.newInstance(Path.of(resourceLoader.getTokenizerPath()))
+            HuggingFaceTokenizerWrapper(hf)
+        } catch (e: Throwable) {
+            System.err.println("INFO: HuggingFace native tokenizer unavailable (${e.javaClass.simpleName}), trying BertFullTokenizer fallback")
+            // Fall back to pure Java BertFullTokenizer (works on Android)
+            try {
+                val vocabPath = Path.of(resourceLoader.getVocabPath())
+                val vocab = DefaultVocabulary(vocabPath.toFile().readLines())
+                val bert = BertFullTokenizer(vocab, true)
+                BertTokenizerWrapper(bert, vocab)
+            } catch (e2: Throwable) {
+                System.err.println("WARNING: Both tokenizers failed to load, memory features disabled: ${e2.message}")
+                available = false
+                null
+            }
         }
     }
 
@@ -74,11 +87,10 @@ class OnnxEmbeddingClient(
 
     private fun embedBatchInternal(
         texts: List<String>,
-        tok: HuggingFaceTokenizer,
+        tok: TokenizerWrapper,
         sess: OrtSession,
     ): List<FloatArray> {
-        val encodings = texts.map { tok.encode(it) }
-        // Cap sequence length to avoid excessive padding
+        val encodings = texts.map { tok.encode(it, MAX_SEQ_LEN) }
         val maxLen = min(encodings.maxOf { it.ids.size }, MAX_SEQ_LEN)
         val batchSize = texts.size
 
@@ -130,7 +142,7 @@ class OnnxEmbeddingClient(
 
     override fun close() {
         session?.close()
-        tokenizer?.close()
+        (tokenizer as? Closeable)?.close()
     }
 
     companion object {
@@ -174,5 +186,64 @@ class OnnxEmbeddingClient(
 
             return result
         }
+    }
+}
+
+internal data class TokenEncoding(
+    val ids: LongArray,
+    val attentionMask: LongArray,
+)
+
+internal interface TokenizerWrapper {
+    fun encode(text: String, maxLen: Int): TokenEncoding
+}
+
+internal class HuggingFaceTokenizerWrapper(
+    private val tokenizer: HuggingFaceTokenizer,
+) : TokenizerWrapper, Closeable {
+
+    override fun encode(text: String, maxLen: Int): TokenEncoding {
+        val enc = tokenizer.encode(text)
+        return TokenEncoding(
+            ids = enc.ids,
+            attentionMask = enc.attentionMask,
+        )
+    }
+
+    override fun close() {
+        tokenizer.close()
+    }
+}
+
+internal class BertTokenizerWrapper(
+    private val tokenizer: BertFullTokenizer,
+    private val vocab: DefaultVocabulary,
+) : TokenizerWrapper {
+
+    private val clsId = vocab.getIndex("[CLS]")
+    private val sepId = vocab.getIndex("[SEP]")
+    private val unkId = vocab.getIndex("[UNK]")
+
+    override fun encode(text: String, maxLen: Int): TokenEncoding {
+        val tokens = tokenizer.tokenize(text)
+        // Reserve 2 positions for [CLS] and [SEP]
+        val truncated = if (tokens.size > maxLen - 2) tokens.subList(0, maxLen - 2) else tokens
+        val seqLen = truncated.size + 2
+
+        val ids = LongArray(seqLen)
+        val mask = LongArray(seqLen)
+
+        ids[0] = clsId
+        mask[0] = 1L
+
+        for (i in truncated.indices) {
+            ids[i + 1] = if (vocab.contains(truncated[i])) vocab.getIndex(truncated[i]) else unkId
+            mask[i + 1] = 1L
+        }
+
+        ids[seqLen - 1] = sepId
+        mask[seqLen - 1] = 1L
+
+        return TokenEncoding(ids = ids, attentionMask = mask)
     }
 }

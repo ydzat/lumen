@@ -67,6 +67,14 @@ android {
         }
     }
 
+    lint {
+        disable += "NullSafeMutableLiveData"
+        abortOnError = false
+        // Koog 0.6.4 pulls in Kotlin 2.3.0 metadata libs which lint
+        // cannot parse yet; skip fatal lint checks on release builds
+        checkReleaseBuilds = false
+    }
+
     buildFeatures {
         compose = true
     }
@@ -94,4 +102,5 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.koin.android)
     implementation(libs.coroutines.android)
+    implementation(libs.objectbox.android)
 }

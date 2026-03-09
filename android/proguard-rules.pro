@@ -1,9 +1,8 @@
 # ============================================================
 # Lumen Android — R8 / ProGuard keep rules
 # ============================================================
-# Note: Broad keep rules are intentional. AGP 8.7.3's R8 cannot
-# parse Kotlin 2.2.0 metadata, so narrowing causes R8 failures.
-# Revisit once AGP is updated to support Kotlin 2.2.0.
+# Broad keep rules are intentional to avoid R8 stripping
+# classes loaded via reflection (Koin DI, serialization, JNI).
 
 # ---- ObjectBox entities & generated cursor/properties classes ----
 -keep class com.lumen.core.database.entities.** { *; }
@@ -53,15 +52,45 @@
 -keep class com.prof18.rssparser.** { *; }
 -dontwarn com.prof18.rssparser.**
 
+# ---- Readability4J + Jsoup ----
+-keep class net.dankito.readability4j.** { *; }
+-dontwarn net.dankito.readability4j.**
+-keep class org.jsoup.** { *; }
+-dontwarn org.jsoup.**
+
 # ---- Apache PDFBox Android ----
 -keep class com.tom_roush.pdfbox.** { *; }
 -dontwarn com.tom_roush.pdfbox.**
 -dontwarn org.bouncycastle.**
 
-# ---- Compose / AndroidX (usually handled by default rules) ----
+# ---- Compose / AndroidX ----
 -dontwarn androidx.**
 
 # ---- General Kotlin rules ----
 -keep class kotlin.Metadata { *; }
 -dontwarn kotlin.**
 -keepclassmembers class **$WhenMappings { <fields>; }
+
+# ============================================================
+# Koog transitive dependencies — optional JVM-only classes
+# not available on Android (Netty native, OpenTelemetry,
+# Lettuce/Redis, Jackson, Log4j, JFR, etc.)
+# ============================================================
+-dontwarn com.fasterxml.jackson.**
+-dontwarn com.google.auto.value.**
+-dontwarn io.micrometer.context.**
+-dontwarn io.netty.channel.epoll.**
+-dontwarn io.netty.channel.kqueue.**
+-dontwarn io.netty.channel.uring.**
+-dontwarn io.netty.internal.tcnative.**
+-dontwarn io.opentelemetry.**
+-dontwarn javax.enterprise.**
+-dontwarn javax.naming.**
+-dontwarn jdk.jfr.**
+-dontwarn jdk.net.**
+-dontwarn org.HdrHistogram.**
+-dontwarn org.LatencyUtils.**
+-dontwarn org.apache.commons.lang3.**
+-dontwarn org.apache.log4j.**
+-dontwarn org.apache.logging.log4j.**
+-dontwarn reactor.blockhound.**

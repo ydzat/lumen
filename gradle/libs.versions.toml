@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.2.0"
-agp = "8.7.3"
+agp = "8.10.1"
 compose-multiplatform = "1.9.3"
 koog = "0.6.4"
 objectbox = "4.0.3"
@@ -27,6 +27,7 @@ koog-agents = { module = "ai.koog:koog-agents", version.ref = "koog" }
 
 # ObjectBox
 objectbox-kotlin = { module = "io.objectbox:objectbox-kotlin", version.ref = "objectbox" }
+objectbox-android = { module = "io.objectbox:objectbox-android", version.ref = "objectbox" }
 objectbox-linux = { module = "io.objectbox:objectbox-linux", version.ref = "objectbox" }
 objectbox-macos = { module = "io.objectbox:objectbox-macos", version.ref = "objectbox" }
 objectbox-windows = { module = "io.objectbox:objectbox-windows", version.ref = "objectbox" }
