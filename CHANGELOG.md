@@ -96,6 +96,7 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
+- Update CHANGELOG.md for v0.1.0
 - Add project logo, screenshots, and rewrite README by @ydzat
 - Add bilingual README (Chinese + English) by @ydzat
 
@@ -197,6 +198,7 @@ All notable changes to this project will be documented in this file.
 
 ### Testing
 
+- Exclude network integration tests in CI via Gradle filter by @ydzat
 - Skip network integration tests in CI environment by @ydzat
 - **archive**: Add route tests for export, import, and auth by @ydzat
 - **archive**: Add round-trip, dedup, and manifest validation tests by @ydzat
