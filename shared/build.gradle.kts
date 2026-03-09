@@ -49,6 +49,7 @@ kotlin {
             implementation(libs.markdown.renderer.m3)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
+            implementation(libs.readability4j)
             api(project(":shared-db"))
         }
 
@@ -74,7 +75,6 @@ kotlin {
                 implementation(libs.onnxruntime.gpu)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.pdfbox)
-                implementation(libs.readability4j)
                 // JavaFX WebView for math rendering (MathJax)
                 val fxClassifier = when {
                     org.gradle.internal.os.OperatingSystem.current().isLinux -> "linux"
