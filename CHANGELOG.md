@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [0.1.0] - 2026-03-09
 
+### Documentation
+
+- Add sponsor section with Ko-fi and Afdian links by @ydzat
+## [0.1.0] - 2026-03-09
+
 ### Bug Fixes
 
 - **ci**: Grant write permission for CHANGELOG commit in release workflow by @ydzat
@@ -96,7 +101,8 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
-- Update CHANGELOG.md for v0.1.0
+- Update CHANGELOG.md for v0.1.0 by @github-actions[bot]
+- Update CHANGELOG.md for v0.1.0 by @github-actions[bot]
 - Add project logo, screenshots, and rewrite README by @ydzat
 - Add bilingual README (Chinese + English) by @ydzat
 
