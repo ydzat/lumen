@@ -768,9 +768,10 @@ private val LATEX_COMMANDS = mapOf(
 )
 
 // Patterns for LaTeX commands with braced arguments
-private val LATEX_BRACE_CMD = Regex("""\\(?:mathbb|mathbf|mathcal|mathrm|mathit|mathsf|text|textit|textbf|boldsymbol|operatorname)\{([^}]*)}""")
-private val LATEX_FRAC = Regex("""\\frac\{([^}]*?)}\{([^}]*?)}""")
-private val LATEX_SQRT = Regex("""\\sqrt\{([^}]*?)}""")
+// Use [{}] instead of \{ \} for Android ICU regex compatibility
+private val LATEX_BRACE_CMD = Regex("""\\(?:mathbb|mathbf|mathcal|mathrm|mathit|mathsf|text|textit|textbf|boldsymbol|operatorname)[{]([^}]*)[}]""")
+private val LATEX_FRAC = Regex("""\\frac[{]([^}]*?)[}][{]([^}]*?)[}]""")
+private val LATEX_SQRT = Regex("""\\sqrt[{]([^}]*?)[}]""")
 private val LATEX_UNKNOWN_CMD = Regex("""\\[a-zA-Z]+""")
 
 private fun latexToText(latex: String): String {
