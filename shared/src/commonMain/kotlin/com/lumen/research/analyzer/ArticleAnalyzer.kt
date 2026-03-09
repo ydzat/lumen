@@ -6,6 +6,7 @@ import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.LlmCall
 import com.lumen.core.util.extractJsonObject
 import com.lumen.research.collector.AnalysisStatus
+import com.lumen.research.languageDisplayName
 import com.lumen.ui.stripHtml
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -14,6 +15,7 @@ class ArticleAnalyzer(
     private val db: LumenDatabase,
     private val llmCall: LlmCall,
     private val embeddingClient: EmbeddingClient,
+    private val language: String = "en",
 ) {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -49,7 +51,7 @@ class ArticleAnalyzer(
 
     suspend fun analyzeWithLlm(article: Article): Article {
         val result = try {
-            val response = llmCall.execute(SYSTEM_PROMPT, buildUserPrompt(article))
+            val response = llmCall.execute(buildSystemPrompt(), buildUserPrompt(article))
             parseAnalysisResponse(response)
         } catch (_: Exception) {
             AnalysisResult(summary = article.summary)
@@ -96,20 +98,25 @@ class ArticleAnalyzer(
         val keywords: List<String> = emptyList(),
     )
 
-    companion object {
-        internal const val CONTENT_EMBED_LIMIT = 1000
-        internal const val CONTENT_LLM_LIMIT = 3000
-        internal const val SYSTEM_PROMPT = """You are a research article analyst. Analyze the given article and produce a concise summary and relevant keywords.
+    internal fun buildSystemPrompt(): String {
+        val langName = languageDisplayName(language)
+        return """You are a research article analyst. Analyze the given article and produce a concise summary and relevant keywords.
 
 ## Rules
 
 1. Write a 2-3 sentence summary capturing the key contribution or finding.
 2. Extract 3-7 keywords that represent the main topics.
+3. Write the summary in $langName. Keywords should remain in their original language (usually English).
 
 ## Output Format
 
 Return a JSON object only, with no other text:
 
 {"summary": "2-3 sentence summary", "keywords": ["k1", "k2"]}"""
+    }
+
+    companion object {
+        internal const val CONTENT_EMBED_LIMIT = 1000
+        internal const val CONTENT_LLM_LIMIT = 3000
     }
 }

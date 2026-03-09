@@ -7,6 +7,7 @@ import com.lumen.core.database.entities.ResearchProject
 import com.lumen.core.memory.EmbeddingClient
 import com.lumen.core.memory.LlmCall
 import com.lumen.core.util.extractJsonObject
+import com.lumen.research.languageDisplayName
 import com.lumen.research.parseCsvSet
 import io.objectbox.query.QueryBuilder.StringOrder
 import kotlinx.serialization.Serializable
@@ -23,6 +24,7 @@ class SparkEngine(
     private val llmCall: LlmCall,
     private val db: LumenDatabase,
     private val embeddingClient: EmbeddingClient? = null,
+    private val language: String = "en",
 ) {
 
     suspend fun generateSearchKeywords(projects: List<ResearchProject>): Set<String> {
@@ -77,7 +79,8 @@ Rules:
 - Generate keywords that connect concepts across different projects
 - Max $MAX_KEYWORDS keywords
 - Each keyword should be 1-4 words
-- Focus on intersection points, not individual project topics"""
+- Focus on intersection points, not individual project topics
+- Keywords should be in English (for search purposes)"""
 
         val projectSummaries = projects.joinToString("\n") { project ->
             val keywords = parseCsvSet(project.keywords).joinToString(", ")
@@ -92,12 +95,14 @@ Rules:
         projects: List<ResearchProject>,
         articles: List<Article>,
     ): Pair<String, String> {
+        val langName = languageDisplayName(language)
         val systemPrompt = """You find unexpected connections between research domains.
 Output JSON: {"sparks": [{"title": "short title", "description": "1-2 sentence insight", "relatedKeywords": ["kw1", "kw2"], "sourceProjectIds": [1, 2]}]}
 Rules:
 - Each spark connects concepts from at least 2 different projects
 - Be specific and actionable, not generic
-- Max 3 sparks"""
+- Max 3 sparks
+- Write title and description in $langName. Keywords should remain in English."""
 
         val projectSection = projects.joinToString("\n") { project ->
             val keywords = parseCsvSet(project.keywords).joinToString(", ")
@@ -116,8 +121,10 @@ Rules:
         topic: String,
         projects: List<ResearchProject>,
     ): Pair<String, String> {
+        val langName = languageDisplayName(language)
         val systemPrompt = """Based on the current discussion topic, suggest one cross-project insight.
 Output JSON: {"title": "short title", "description": "1-2 sentence insight", "relatedKeywords": ["kw1", "kw2"], "sourceProjectIds": [1, 2]}
+Write title and description in $langName.
 If no meaningful cross-project connection exists, output: {"title": "", "description": "", "relatedKeywords": [], "sourceProjectIds": []}"""
 
         val projectSection = projects.joinToString("\n") { project ->

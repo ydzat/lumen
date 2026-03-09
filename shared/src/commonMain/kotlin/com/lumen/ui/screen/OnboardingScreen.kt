@@ -55,6 +55,7 @@ import com.lumen.research.collector.SourceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.lumen.ui.i18n.strings
 import org.koin.compose.koinInject
 
 private val PROVIDERS = listOf(
@@ -165,17 +166,17 @@ private fun WelcomeStep(
     var providerExpanded by remember { mutableStateOf(false) }
     var apiKeyVisible by remember { mutableStateOf(false) }
     var isTesting by remember { mutableStateOf(false) }
+    val s = strings()
 
-    Text("Welcome to Lumen", style = MaterialTheme.typography.headlineMedium)
+    Text(s.welcomeToLumen, style = MaterialTheme.typography.headlineMedium)
     Spacer(Modifier.height(8.dp))
     Text(
-        "Lumen is your personal AI assistant for research and companionship. " +
-            "Let's get you set up in a few quick steps.",
+        s.onboardingIntro,
         style = MaterialTheme.typography.bodyLarge,
     )
 
     Spacer(Modifier.height(24.dp))
-    Text("Step 1/3: Configure LLM Provider", style = MaterialTheme.typography.titleMedium)
+    Text("${s.stepLabel(1, 3)}: ${s.step1ConfigureLlm}", style = MaterialTheme.typography.titleMedium)
     Spacer(Modifier.height(16.dp))
 
     ExposedDropdownMenuBox(
@@ -186,7 +187,7 @@ private fun WelcomeStep(
             value = PROVIDERS.firstOrNull { it.first == provider }?.second ?: provider,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Provider") },
+            label = { Text(s.provider) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerExpanded) },
             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
         )
@@ -211,7 +212,7 @@ private fun WelcomeStep(
     OutlinedTextField(
         value = model,
         onValueChange = onModelChange,
-        label = { Text("Model") },
+        label = { Text(s.model) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -221,14 +222,14 @@ private fun WelcomeStep(
     OutlinedTextField(
         value = apiKey,
         onValueChange = onApiKeyChange,
-        label = { Text("API Key") },
+        label = { Text(s.apiKey) },
         singleLine = true,
         visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {
             IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
                 Icon(
                     imageVector = if (apiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (apiKeyVisible) "Hide API key" else "Show API key",
+                    contentDescription = if (apiKeyVisible) s.hideApiKey else s.showApiKey,
                 )
             }
         },
@@ -240,8 +241,8 @@ private fun WelcomeStep(
     OutlinedTextField(
         value = apiBase,
         onValueChange = onApiBaseChange,
-        label = { Text("API Base URL (optional)") },
-        placeholder = { Text("Leave empty for default") },
+        label = { Text(s.apiBaseUrlOptional) },
+        placeholder = { Text(s.leaveEmptyForDefault) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -256,8 +257,8 @@ private fun WelcomeStep(
                 try {
                     val result = withContext(Dispatchers.Default) { agent.chat("Hello") }
                     val message = when (result) {
-                        is ChatResult.Success -> "Connection successful!"
-                        is ChatResult.Error -> "Connection failed: ${result.message}"
+                        is ChatResult.Success -> s.connectionSuccessful
+                        is ChatResult.Error -> s.connectionFailed(result.message)
                     }
                     snackbarHostState.showSnackbar(message)
                 } finally {
@@ -272,7 +273,7 @@ private fun WelcomeStep(
             CircularProgressIndicator(modifier = Modifier.height(16.dp).width(16.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
         }
-        Text("Test Connection")
+        Text(s.testConnection)
     }
 
     Spacer(Modifier.height(24.dp))
@@ -281,8 +282,8 @@ private fun WelcomeStep(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        OutlinedButton(onClick = onSkip) { Text("Skip") }
-        Button(onClick = onNext) { Text("Next") }
+        OutlinedButton(onClick = onSkip) { Text(s.skip) }
+        Button(onClick = onNext) { Text(s.next) }
     }
 }
 
@@ -292,13 +293,14 @@ private fun SourcesStep(
     onNext: () -> Unit,
     onSkip: () -> Unit,
 ) {
+    val s = strings()
     val defaultSources = remember { SourceManager.DEFAULT_SOURCES }
     val enabledStates = remember { mutableStateOf(defaultSources.map { true }.toMutableList()) }
 
-    Text("Step 2/3: RSS Sources", style = MaterialTheme.typography.titleMedium)
+    Text("${s.stepLabel(2, 3)}: ${s.step2RssSources}", style = MaterialTheme.typography.titleMedium)
     Spacer(Modifier.height(8.dp))
     Text(
-        "Lumen can collect articles from these RSS feeds. Toggle the sources you want to follow.",
+        s.step2Intro,
         style = MaterialTheme.typography.bodyMedium,
     )
     Spacer(Modifier.height(16.dp))
@@ -330,7 +332,7 @@ private fun SourcesStep(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        OutlinedButton(onClick = onSkip) { Text("Skip") }
+        OutlinedButton(onClick = onSkip) { Text(s.skip) }
         Button(
             onClick = {
                 val now = System.currentTimeMillis()
@@ -342,7 +344,7 @@ private fun SourcesStep(
                 onNext()
             },
         ) {
-            Text("Next")
+            Text(s.next)
         }
     }
 }
@@ -353,16 +355,17 @@ private fun PersonaStep(
     onComplete: () -> Unit,
     onSkip: () -> Unit,
 ) {
+    val s = strings()
     val personas = remember {
         personaManager.seedBuiltInPersonas()
         personaManager.listAll()
     }
     var selectedId by remember { mutableStateOf(personas.firstOrNull { it.isActive }?.id ?: 0L) }
 
-    Text("Step 3/3: Communication Style", style = MaterialTheme.typography.titleMedium)
+    Text("${s.stepLabel(3, 3)}: ${s.step3CommunicationStyle}", style = MaterialTheme.typography.titleMedium)
     Spacer(Modifier.height(8.dp))
     Text(
-        "Choose Lumen's default communication style. You can switch anytime in chat.",
+        s.step3Intro,
         style = MaterialTheme.typography.bodyMedium,
     )
     Spacer(Modifier.height(16.dp))
@@ -399,7 +402,7 @@ private fun PersonaStep(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        OutlinedButton(onClick = onSkip) { Text("Skip") }
+        OutlinedButton(onClick = onSkip) { Text(s.skip) }
         Button(
             onClick = {
                 if (selectedId > 0) {
@@ -408,7 +411,7 @@ private fun PersonaStep(
                 onComplete()
             },
         ) {
-            Text("Complete")
+            Text(s.complete)
         }
     }
 }

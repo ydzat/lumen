@@ -74,22 +74,36 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.getKoin
+import com.lumen.ui.i18n.AppStrings
+import com.lumen.ui.i18n.strings
 import org.koin.compose.koinInject
 
-private enum class SortMode(val label: String) {
-    DATE("Date"),
-    RELEVANCE("Relevance"),
+private enum class SortMode {
+    DATE,
+    RELEVANCE,
 }
 
-private enum class AnalysisFilterMode(val label: String) {
-    ALL("All"),
-    ANALYZED("Analyzed"),
-    UNANALYZED("Unanalyzed"),
+private enum class AnalysisFilterMode {
+    ALL,
+    ANALYZED,
+    UNANALYZED,
+}
+
+private fun SortMode.label(s: AppStrings): String = when (this) {
+    SortMode.DATE -> s.sortByDate
+    SortMode.RELEVANCE -> s.sortByRelevance
+}
+
+private fun AnalysisFilterMode.label(s: AppStrings): String = when (this) {
+    AnalysisFilterMode.ALL -> s.showAll
+    AnalysisFilterMode.ANALYZED -> s.analyzed
+    AnalysisFilterMode.UNANALYZED -> s.unanalyzed
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticlesScreen() {
+    val s = strings()
     val db = koinInject<LumenDatabase>()
     val projectManager = koinInject<ProjectManager>()
     val collectorManager = koinInject<CollectorManager>()
@@ -205,7 +219,7 @@ fun ArticlesScreen() {
                                 val result = withContext(Dispatchers.Default) {
                                     collectorManager.runNow { stage, current, total ->
                                         withContext(Dispatchers.Main) {
-                                            progressStage = formatStageName(stage)
+                                            progressStage = formatStageName(stage, s)
                                             progressDetail = if (total > 1) "$current/$total" else ""
                                         }
                                     }
@@ -238,7 +252,7 @@ fun ArticlesScreen() {
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "Refresh feeds")
+                    Icon(Icons.Default.Refresh, contentDescription = s.refreshFeeds)
                 }
             }
         },
@@ -262,12 +276,12 @@ fun ArticlesScreen() {
                     modifier = Modifier.weight(1f),
                 ) {
                     OutlinedTextField(
-                        value = if (activeProjectId == 0L) "All Projects"
+                        value = if (activeProjectId == 0L) s.allProjects
                         else projects.firstOrNull { it.id == activeProjectId }?.name
-                            ?: "All Projects",
+                            ?: s.allProjects,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Project") },
+                        label = { Text(s.project) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = projectExpanded)
                         },
@@ -280,7 +294,7 @@ fun ArticlesScreen() {
                         onDismissRequest = { projectExpanded = false },
                     ) {
                         DropdownMenuItem(
-                            text = { Text("All Projects") },
+                            text = { Text(s.allProjects) },
                             onClick = {
                                 activeProjectId = 0L
                                 projectExpanded = false
@@ -312,7 +326,7 @@ fun ArticlesScreen() {
                         }
                     },
                 ) {
-                    Text(sortMode.label)
+                    Text(sortMode.label(s))
                 }
 
                 // Starred filter toggle
@@ -323,8 +337,8 @@ fun ArticlesScreen() {
                     Icon(
                         imageVector = if (filterStarred) Icons.Default.Star
                         else Icons.Default.FilterList,
-                        contentDescription = if (filterStarred) "Show all"
-                        else "Show starred only",
+                        contentDescription = if (filterStarred) s.showAll
+                        else s.showStarredOnly,
                         tint = if (filterStarred) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -337,8 +351,8 @@ fun ArticlesScreen() {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Archive,
-                        contentDescription = if (showArchived) "Hide archived"
-                        else "Show archived",
+                        contentDescription = if (showArchived) s.hideArchived
+                        else s.showArchived,
                         tint = if (showArchived) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -361,11 +375,11 @@ fun ArticlesScreen() {
                     modifier = Modifier.weight(1f),
                 ) {
                     OutlinedTextField(
-                        value = if (filterSourceId == 0L) "All Sources"
+                        value = if (filterSourceId == 0L) s.allSources
                         else sourceNames[filterSourceId] ?: "Unknown",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Source") },
+                        label = { Text(s.source) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded)
                         },
@@ -378,7 +392,7 @@ fun ArticlesScreen() {
                         onDismissRequest = { sourceExpanded = false },
                     ) {
                         DropdownMenuItem(
-                            text = { Text("All Sources") },
+                            text = { Text(s.allSources) },
                             onClick = {
                                 filterSourceId = 0L
                                 sourceExpanded = false
@@ -407,10 +421,10 @@ fun ArticlesScreen() {
                     modifier = Modifier.weight(1f),
                 ) {
                     OutlinedTextField(
-                        value = filterAnalysisStatus.label,
+                        value = filterAnalysisStatus.label(s),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Status") },
+                        label = { Text(s.status) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = analysisExpanded)
                         },
@@ -424,7 +438,7 @@ fun ArticlesScreen() {
                     ) {
                         AnalysisFilterMode.entries.forEach { mode ->
                             DropdownMenuItem(
-                                text = { Text(mode.label) },
+                                text = { Text(mode.label(s)) },
                                 onClick = {
                                     filterAnalysisStatus = mode
                                     analysisExpanded = false
@@ -478,13 +492,13 @@ fun ArticlesScreen() {
                         )
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            text = "No articles yet",
+                            text = s.noArticlesYet,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "Tap the refresh button to fetch feeds.",
+                            text = s.tapRefreshToFetch,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -542,13 +556,9 @@ fun ArticlesScreen() {
         selectedArticle?.let { article ->
             AlertDialog(
                 onDismissRequest = { showAnalyzePrompt = false },
-                title = { Text("Article Not Analyzed") },
+                title = { Text(s.articleNotAnalyzed) },
                 text = {
-                    Text(
-                        "This article has not been analyzed by AI yet. " +
-                            "Would you like to analyze it now? This will generate " +
-                            "an AI summary and extract keywords.",
-                    )
+                    Text(s.analyzePrompt)
                 },
                 confirmButton = {
                     TextButton(
@@ -563,7 +573,7 @@ fun ArticlesScreen() {
                                     detailArticle = analyzed
                                     selectedArticle = null
                                     loadData()
-                                    snackbarHostState.showSnackbar("Analysis complete")
+                                    snackbarHostState.showSnackbar(s.analysisComplete)
                                 } catch (e: Exception) {
                                     snackbarHostState.showSnackbar(
                                         "Analysis failed: ${e.message ?: "Unknown error"}"
@@ -581,9 +591,9 @@ fun ArticlesScreen() {
                                 strokeWidth = 2.dp,
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("Analyzing...")
+                            Text(s.analyzing)
                         } else {
-                            Text("Analyze")
+                            Text(s.analyze)
                         }
                     }
                 },
@@ -595,7 +605,7 @@ fun ArticlesScreen() {
                             selectedArticle = null
                         },
                     ) {
-                        Text("View Without Analysis")
+                        Text(s.viewWithoutAnalysis)
                     }
                 },
             )
@@ -718,6 +728,7 @@ private fun ArticleCard(
     onClick: () -> Unit,
     onStarClick: () -> Unit,
 ) {
+    val s = strings()
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -761,7 +772,7 @@ private fun ArticleCard(
                     }
                     if (article.citationCount > 0) {
                         Text(
-                            text = "${article.citationCount} cited",
+                            text = s.citedCount(article.citationCount),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.secondary,
                         )
@@ -775,14 +786,14 @@ private fun ArticleCard(
                     }
                     if (article.analysisStatus == AnalysisStatus.ANALYZED) {
                         Text(
-                            text = "Analyzed",
+                            text = s.analyzed,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
                     if (article.archived) {
                         Text(
-                            text = "Archived",
+                            text = s.archived,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -812,7 +823,7 @@ private fun ArticleCard(
                 Icon(
                     imageVector = if (article.starred) Icons.Default.Star
                     else Icons.Default.StarBorder,
-                    contentDescription = if (article.starred) "Unstar" else "Star",
+                    contentDescription = if (article.starred) s.unstar else s.star,
                     tint = if (article.starred) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -829,11 +840,12 @@ private fun ArticleDetailDialog(
     onArchiveToggle: () -> Unit,
     onViewDetails: () -> Unit,
 ) {
+    val s = strings()
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onViewDetails) {
-                Text("View Details")
+                Text(s.viewDetails)
             }
         },
         dismissButton = {
@@ -846,10 +858,10 @@ private fun ArticleDetailDialog(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text(if (article.archived) "Restore" else "Archive")
+                    Text(if (article.archived) s.restore else s.archive)
                 }
                 TextButton(onClick = onDismiss) {
-                    Text("Close")
+                    Text(s.close)
                 }
             }
         },
@@ -919,21 +931,21 @@ private fun ArticleDetailDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (article.aiRelevanceScore > 0f) {
                             Text(
-                                text = "Relevance: ${"%.0f".format(article.aiRelevanceScore * 100)}%",
+                                text = s.relevancePercent(article.aiRelevanceScore.toDouble()),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.secondary,
                             )
                         }
                         if (article.citationCount > 0) {
                             Text(
-                                text = "Citations: ${article.citationCount}",
+                                text = s.citationsCount(article.citationCount),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.secondary,
                             )
                         }
                         if (article.influentialCitationCount > 0) {
                             Text(
-                                text = "Influential: ${article.influentialCitationCount}",
+                                text = s.influentialCount(article.influentialCitationCount),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.secondary,
                             )
@@ -954,7 +966,7 @@ private fun ArticleDetailDialog(
                 // AI Summary
                 if (article.aiSummary.isNotBlank()) {
                     Text(
-                        text = "AI Summary",
+                        text = s.aiSummary,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Medium,
                     )
@@ -969,7 +981,7 @@ private fun ArticleDetailDialog(
                 // Keywords
                 if (article.keywords.isNotBlank()) {
                     Text(
-                        text = "Keywords: ${article.keywords}",
+                        text = "${s.keywords}: ${article.keywords}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -979,13 +991,13 @@ private fun ArticleDetailDialog(
     )
 }
 
-private fun formatStageName(stage: PipelineStage): String = when (stage) {
-    PipelineStage.FETCHING -> "Fetching articles..."
-    PipelineStage.DEDUPLICATING -> "Removing duplicates..."
-    PipelineStage.ENRICHING -> "Fetching full articles..."
-    PipelineStage.EMBEDDING -> "Generating embeddings..."
-    PipelineStage.SCORING -> "Scoring relevance..."
-    PipelineStage.ANALYZING -> "Analyzing articles..."
-    PipelineStage.SPARKING -> "Generating insights..."
-    PipelineStage.DIGESTING -> "Creating digest..."
+private fun formatStageName(stage: PipelineStage, s: AppStrings): String = when (stage) {
+    PipelineStage.FETCHING -> s.fetchingArticles
+    PipelineStage.DEDUPLICATING -> s.removingDuplicates
+    PipelineStage.ENRICHING -> s.enrichingContent
+    PipelineStage.EMBEDDING -> s.embeddingArticles
+    PipelineStage.SCORING -> s.scoringRelevance
+    PipelineStage.ANALYZING -> s.analyzingArticles
+    PipelineStage.SPARKING -> s.generatingSparks
+    PipelineStage.DIGESTING -> s.generatingDigest
 }

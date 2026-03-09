@@ -17,8 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.lumen.core.config.ConfigStore
+import com.lumen.ui.i18n.ProvideStrings
 import com.lumen.ui.navigation.Tab
 import com.lumen.ui.navigation.TabContent
+import com.lumen.ui.navigation.localizedLabel
 import com.lumen.ui.screen.OnboardingScreen
 import com.lumen.ui.theme.LumenTheme
 import com.lumen.ui.theme.ThemeState
@@ -33,29 +35,31 @@ class MainActivity : ComponentActivity() {
         ThemeState.mode = config.preferences.theme
         setContent {
             LumenTheme {
-                var showOnboarding by remember { mutableStateOf(!config.preferences.hasCompletedOnboarding) }
+                ProvideStrings {
+                    var showOnboarding by remember { mutableStateOf(!config.preferences.hasCompletedOnboarding) }
 
-                if (showOnboarding) {
-                    OnboardingScreen(onComplete = { showOnboarding = false })
-                } else {
-                    var selectedTab by remember { mutableStateOf(Tab.Home) }
-                    Scaffold(
-                        modifier = Modifier.fillMaxSize(),
-                        bottomBar = {
-                            NavigationBar {
-                                Tab.entries.forEach { tab ->
-                                    NavigationBarItem(
-                                        selected = selectedTab == tab,
-                                        onClick = { selectedTab = tab },
-                                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                        label = { Text(tab.label) },
-                                    )
+                    if (showOnboarding) {
+                        OnboardingScreen(onComplete = { showOnboarding = false })
+                    } else {
+                        var selectedTab by remember { mutableStateOf(Tab.Home) }
+                        Scaffold(
+                            modifier = Modifier.fillMaxSize(),
+                            bottomBar = {
+                                NavigationBar {
+                                    Tab.entries.forEach { tab ->
+                                        NavigationBarItem(
+                                            selected = selectedTab == tab,
+                                            onClick = { selectedTab = tab },
+                                            icon = { Icon(tab.icon, contentDescription = tab.localizedLabel) },
+                                            label = { Text(tab.localizedLabel) },
+                                        )
+                                    }
                                 }
+                            },
+                        ) { padding ->
+                            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                                TabContent(selectedTab)
                             }
-                        },
-                    ) { padding ->
-                        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                            TabContent(selectedTab)
                         }
                     }
                 }

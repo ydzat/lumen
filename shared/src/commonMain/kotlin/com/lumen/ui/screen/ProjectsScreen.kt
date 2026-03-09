@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lumen.core.database.entities.ResearchProject
 import com.lumen.research.ProjectManager
+import com.lumen.ui.i18n.strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -51,6 +52,7 @@ import org.koin.compose.koinInject
 
 @Composable
 fun ProjectsScreen(onBack: () -> Unit) {
+    val s = strings()
     val projectManager = koinInject<ProjectManager>()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -72,7 +74,7 @@ fun ProjectsScreen(onBack: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreateDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Create project")
+                Icon(Icons.Default.Add, contentDescription = s.createProject)
             }
         },
     ) { padding ->
@@ -84,11 +86,11 @@ fun ProjectsScreen(onBack: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = "Research Projects",
+                    text = s.researchProjects,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -118,7 +120,7 @@ fun ProjectsScreen(onBack: () -> Unit) {
 
     if (showCreateDialog) {
         ProjectFormDialog(
-            title = "Create Project",
+            title = s.createProject,
             initial = null,
             onDismiss = { showCreateDialog = false },
             onConfirm = { name, description, keywords ->
@@ -136,7 +138,7 @@ fun ProjectsScreen(onBack: () -> Unit) {
 
     editingProject?.let { project ->
         ProjectFormDialog(
-            title = "Edit Project",
+            title = s.editProject,
             initial = project,
             onDismiss = { editingProject = null },
             onConfirm = { name, description, keywords ->
@@ -157,19 +159,19 @@ fun ProjectsScreen(onBack: () -> Unit) {
     deletingProject?.let { project ->
         AlertDialog(
             onDismissRequest = { deletingProject = null },
-            title = { Text("Delete Project") },
-            text = { Text("Delete \"${project.name}\"? Articles will be unassigned but not deleted.") },
+            title = { Text(s.deleteProject) },
+            text = { Text(s.deleteProjectConfirm(project.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     projectManager.delete(project.id)
                     deletingProject = null
                     loadProjects()
                 }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(s.delete, color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deletingProject = null }) { Text("Cancel") }
+                TextButton(onClick = { deletingProject = null }) { Text(s.cancel) }
             },
         )
     }
@@ -183,6 +185,7 @@ private fun ProjectCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val s = strings()
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = if (project.isActive) {
@@ -205,7 +208,7 @@ private fun ProjectCard(
                     if (project.isActive) {
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Active",
+                            text = s.active,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -229,7 +232,7 @@ private fun ProjectCard(
                         )
                     }
                     Text(
-                        text = "$articleCount articles",
+                        text = s.articlesCount(articleCount.toLong()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -239,18 +242,18 @@ private fun ProjectCard(
             IconButton(onClick = onSetActive) {
                 Icon(
                     imageVector = if (project.isActive) Icons.Default.Star else Icons.Default.StarBorder,
-                    contentDescription = if (project.isActive) "Active" else "Set active",
+                    contentDescription = if (project.isActive) s.active else s.setActive,
                     tint = if (project.isActive) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                Icon(Icons.Default.Edit, contentDescription = s.edit)
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = s.delete,
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -265,6 +268,7 @@ private fun ProjectFormDialog(
     onDismiss: () -> Unit,
     onConfirm: (name: String, description: String, keywords: String) -> Unit,
 ) {
+    val s = strings()
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var description by remember { mutableStateOf(initial?.description ?: "") }
     var keywords by remember { mutableStateOf(initial?.keywords ?: "") }
@@ -277,14 +281,14 @@ private fun ProjectFormDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(s.name) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description") },
+                    label = { Text(s.description) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                     maxLines = 4,
@@ -292,8 +296,8 @@ private fun ProjectFormDialog(
                 OutlinedTextField(
                     value = keywords,
                     onValueChange = { keywords = it },
-                    label = { Text("Keywords") },
-                    placeholder = { Text("comma-separated, e.g. LLM, RAG, agents") },
+                    label = { Text(s.keywordsLabel) },
+                    placeholder = { Text(s.keywordsPlaceholder) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -304,11 +308,11 @@ private fun ProjectFormDialog(
                 onClick = { onConfirm(name.trim(), description.trim(), keywords.trim()) },
                 enabled = name.isNotBlank(),
             ) {
-                Text("Save")
+                Text(s.save)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(s.cancel) }
         },
     )
 }

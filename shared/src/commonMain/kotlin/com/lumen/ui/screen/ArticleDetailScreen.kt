@@ -61,6 +61,8 @@ import com.lumen.core.util.formatEpochDate
 import com.lumen.research.analyzer.DeepAnalysisService
 import com.lumen.ui.displaySourceType
 import com.lumen.ui.HtmlContentRenderer
+import com.lumen.ui.i18n.AppStrings
+import com.lumen.ui.i18n.strings
 import com.lumen.ui.stripHtml
 import kotlinx.coroutines.launch
 
@@ -80,11 +82,12 @@ fun ArticleDetailScreen(
     sectionLoadingIds: Set<Long> = emptySet(),
     sectionAnalyzingIndices: Set<Int> = emptySet(),
 ) {
+    val s = strings()
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var showToc by remember { mutableStateOf(false) }
 
-    val tocEntries = buildTocEntries(article, activeProjectName, localSections)
+    val tocEntries = buildTocEntries(article, activeProjectName, localSections, s)
 
     Scaffold(
         topBar = {
@@ -100,19 +103,19 @@ fun ArticleDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = s.back,
                         )
                     }
                 },
                 actions = {
                     IconButton(onClick = { showToc = true }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Table of Contents")
+                        Icon(Icons.Default.Menu, contentDescription = s.tableOfContents)
                     }
                     IconButton(onClick = onStarToggle) {
                         Icon(
                             imageVector = if (article.starred) Icons.Default.Star
                             else Icons.Default.StarBorder,
-                            contentDescription = if (article.starred) "Unstar" else "Star",
+                            contentDescription = if (article.starred) s.unstar else s.star,
                             tint = if (article.starred) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -121,7 +124,7 @@ fun ArticleDetailScreen(
                         Icon(
                             imageVector = if (article.archived) Icons.Default.Unarchive
                             else Icons.Default.Archive,
-                            contentDescription = if (article.archived) "Restore" else "Archive",
+                            contentDescription = if (article.archived) s.restore else s.archive,
                         )
                     }
                 },
@@ -165,7 +168,7 @@ fun ArticleDetailScreen(
             // AI Summary
             if (article.aiSummary.isNotBlank()) {
                 ExpandableSection(
-                    title = "AI Summary",
+                    title = s.aiSummary,
                     initiallyExpanded = true,
                 ) {
                     Text(
@@ -178,7 +181,7 @@ fun ArticleDetailScreen(
             // Keywords
             if (article.keywords.isNotBlank()) {
                 ExpandableSection(
-                    title = "Keywords",
+                    title = s.keywords,
                     initiallyExpanded = true,
                 ) {
                     Text(
@@ -196,7 +199,7 @@ fun ArticleDetailScreen(
             // Show Abstract only when there is separate content (avoid duplication)
             if (hasDistinctContent && cleanSummary.isNotBlank()) {
                 ExpandableSection(
-                    title = "Abstract",
+                    title = s.abstract_,
                     initiallyExpanded = article.aiSummary.isBlank(),
                 ) {
                     Text(
@@ -209,7 +212,7 @@ fun ArticleDetailScreen(
             // Pipeline translation (whole-article)
             if (article.aiTranslation.isNotBlank()) {
                 ExpandableSection(
-                    title = "Translation",
+                    title = s.translation,
                     initiallyExpanded = false,
                 ) {
                     Text(
@@ -223,7 +226,7 @@ fun ArticleDetailScreen(
             if (localSections.isNotEmpty()) {
                 HorizontalDivider()
                 Text(
-                    text = if (hasDistinctContent) "Article Content" else "Source Text",
+                    text = if (hasDistinctContent) s.articleContent else s.sourceText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -243,7 +246,7 @@ fun ArticleDetailScreen(
             } else if (cleanSummary.isNotBlank() && !hasDistinctContent) {
                 // No sections parsed and no distinct content — show summary as fallback
                 ExpandableSection(
-                    title = "Abstract",
+                    title = s.abstract_,
                     initiallyExpanded = article.aiSummary.isBlank(),
                 ) {
                     Text(
@@ -277,7 +280,7 @@ fun ArticleDetailScreen(
                 modifier = Modifier.padding(bottom = 32.dp),
             ) {
                 Text(
-                    text = "Table of Contents",
+                    text = s.tableOfContents,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -318,6 +321,7 @@ private fun ContentSectionCard(
     onAnalyze: () -> Unit,
     onTranslate: () -> Unit,
 ) {
+    val s = strings()
     val headingStyle = when (localSection.level) {
         1 -> MaterialTheme.typography.titleMedium
         2 -> MaterialTheme.typography.titleSmall
@@ -361,7 +365,7 @@ private fun ContentSectionCard(
             ) {
                 Column {
                     Text(
-                        text = "Translation",
+                        text = s.translation,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.secondary,
@@ -389,7 +393,7 @@ private fun ContentSectionCard(
             ) {
                 Column {
                     Text(
-                        text = "AI Commentary",
+                        text = s.aiCommentary,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -423,7 +427,7 @@ private fun ContentSectionCard(
                             strokeWidth = 2.dp,
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Analyzing...", style = MaterialTheme.typography.labelSmall)
+                        Text(s.analyzing, style = MaterialTheme.typography.labelSmall)
                     } else {
                         Icon(
                             Icons.Default.Analytics,
@@ -431,7 +435,7 @@ private fun ContentSectionCard(
                             modifier = Modifier.size(16.dp),
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("AI Analysis", style = MaterialTheme.typography.labelSmall)
+                        Text(s.aiAnalysis, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -448,7 +452,7 @@ private fun ContentSectionCard(
                             strokeWidth = 2.dp,
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Translating...", style = MaterialTheme.typography.labelSmall)
+                        Text(s.translating, style = MaterialTheme.typography.labelSmall)
                     } else {
                         Icon(
                             Icons.Default.Translate,
@@ -456,7 +460,7 @@ private fun ContentSectionCard(
                             modifier = Modifier.size(16.dp),
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Translate", style = MaterialTheme.typography.labelSmall)
+                        Text(s.translate, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -563,6 +567,7 @@ private fun ExpandableSection(
     initiallyExpanded: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val s = strings()
     var expanded by remember { mutableStateOf(initiallyExpanded) }
 
     Column(modifier = Modifier.animateContentSize()) {
@@ -583,7 +588,7 @@ private fun ExpandableSection(
             Icon(
                 imageVector = if (expanded) Icons.Default.ExpandLess
                 else Icons.Default.ExpandMore,
-                contentDescription = if (expanded) "Collapse" else "Expand",
+                contentDescription = if (expanded) s.collapse else s.expand,
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
@@ -622,6 +627,7 @@ private fun buildTocEntries(
     article: Article,
     activeProjectName: String,
     localSections: List<DeepAnalysisService.LocalSection>,
+    s: AppStrings,
 ): List<TocEntry> {
     val entries = mutableListOf<TocEntry>()
     var index = 0
@@ -647,18 +653,18 @@ private fun buildTocEntries(
     }
 
     if (article.aiSummary.isNotBlank()) {
-        entries.add(TocEntry("AI Summary", index.toFloat() / totalItems))
+        entries.add(TocEntry(s.aiSummary, index.toFloat() / totalItems))
         index++
     }
 
     if (article.keywords.isNotBlank()) {
-        entries.add(TocEntry("Keywords", index.toFloat() / totalItems))
+        entries.add(TocEntry(s.keywords, index.toFloat() / totalItems))
         index++
     }
 
     // Abstract only shown when there's separate content
     if (hasDistinctContent && article.summary.isNotBlank()) {
-        entries.add(TocEntry("Abstract", index.toFloat() / totalItems))
+        entries.add(TocEntry(s.abstract_, index.toFloat() / totalItems))
         index++
     }
 

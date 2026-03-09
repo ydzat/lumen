@@ -48,6 +48,8 @@ import com.lumen.companion.agent.LumenAgent
 import com.lumen.core.config.ConfigStore
 import com.lumen.core.config.LlmConfig
 import com.lumen.core.config.UserPreferences
+import com.lumen.ui.i18n.LanguageState
+import com.lumen.ui.i18n.strings
 import com.lumen.ui.theme.ThemeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -106,6 +108,7 @@ private fun SettingsMainScreen(
     onNavigateToSources: () -> Unit,
     onNavigateToProjects: () -> Unit,
 ) {
+    val s = strings()
     val configStore = koinInject<ConfigStore>()
     val config = remember { configStore.load() }
 
@@ -133,6 +136,28 @@ private fun SettingsMainScreen(
         apiBase = apiBase,
     )
 
+    fun savePreferences(
+        newTheme: String = theme,
+        newLanguage: String = language,
+        newMemoryAutoRecall: Boolean = memoryAutoRecall,
+        newMemoryInterval: Int = memoryInterval.toInt(),
+        newAnalysisMax: Int = analysisMax.toInt(),
+        newDailyBudget: Int = dailyBudget.toInt(),
+    ) {
+        val current = configStore.load()
+        val updated = current.copy(
+            preferences = current.preferences.copy(
+                theme = newTheme,
+                language = newLanguage,
+                memoryAutoRecall = newMemoryAutoRecall,
+                memoryExtractionInterval = newMemoryInterval,
+                analysisMaxPerCycle = newAnalysisMax,
+                dailyArticleBudget = newDailyBudget,
+            ),
+        )
+        configStore.save(updated)
+    }
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -146,7 +171,7 @@ private fun SettingsMainScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
-            Text("LLM Settings", style = MaterialTheme.typography.headlineSmall)
+            Text(s.llmSettings, style = MaterialTheme.typography.headlineSmall)
 
             Spacer(Modifier.height(16.dp))
 
@@ -159,7 +184,7 @@ private fun SettingsMainScreen(
                     value = PROVIDERS.firstOrNull { it.first == provider }?.second ?: provider,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Provider") },
+                    label = { Text(s.provider) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerExpanded) },
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                 )
@@ -186,8 +211,8 @@ private fun SettingsMainScreen(
             OutlinedTextField(
                 value = model,
                 onValueChange = { model = it },
-                label = { Text("Model") },
-                placeholder = { Text("e.g. deepseek-chat") },
+                label = { Text(s.model) },
+                placeholder = { Text(s.egDeepseekChat) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -198,14 +223,14 @@ private fun SettingsMainScreen(
             OutlinedTextField(
                 value = apiKey,
                 onValueChange = { apiKey = it },
-                label = { Text("API Key") },
+                label = { Text(s.apiKey) },
                 singleLine = true,
                 visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
                         Icon(
                             imageVector = if (apiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (apiKeyVisible) "Hide API key" else "Show API key",
+                            contentDescription = if (apiKeyVisible) s.hideApiKey else s.showApiKey,
                         )
                     }
                 },
@@ -218,8 +243,8 @@ private fun SettingsMainScreen(
             OutlinedTextField(
                 value = apiBase,
                 onValueChange = { apiBase = it },
-                label = { Text("API Base URL (optional)") },
-                placeholder = { Text("Leave empty for default") },
+                label = { Text(s.apiBaseUrlOptional) },
+                placeholder = { Text(s.leaveEmptyForDefault) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -233,24 +258,15 @@ private fun SettingsMainScreen(
             ) {
                 Button(
                     onClick = {
-                        val updatedConfig = config.copy(
-                            llm = currentLlmConfig(),
-                            preferences = config.preferences.copy(
-                                theme = theme,
-                                language = language,
-                                memoryAutoRecall = memoryAutoRecall,
-                                memoryExtractionInterval = memoryInterval.toInt(),
-                                analysisMaxPerCycle = analysisMax.toInt(),
-                                dailyArticleBudget = dailyBudget.toInt(),
-                            ),
-                        )
+                        val current = configStore.load()
+                        val updatedConfig = current.copy(llm = currentLlmConfig())
                         configStore.save(updatedConfig)
                         scope.launch {
-                            snackbarHostState.showSnackbar("Settings saved")
+                            snackbarHostState.showSnackbar(s.settingsSaved)
                         }
                     },
                 ) {
-                    Text("Save")
+                    Text(s.save)
                 }
 
                 OutlinedButton(
@@ -263,8 +279,8 @@ private fun SettingsMainScreen(
                                     agent.chat("Hello")
                                 }
                                 val message = when (result) {
-                                    is ChatResult.Success -> "Connection successful"
-                                    is ChatResult.Error -> "Connection failed: ${result.message}"
+                                    is ChatResult.Success -> s.connectionSuccessful
+                                    is ChatResult.Error -> s.connectionFailed(result.message)
                                 }
                                 snackbarHostState.showSnackbar(message)
                             } finally {
@@ -282,13 +298,13 @@ private fun SettingsMainScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text("Test Connection")
+                    Text(s.testConnection)
                 }
             }
 
             Spacer(Modifier.height(32.dp))
 
-            Text("Preferences", style = MaterialTheme.typography.headlineSmall)
+            Text(s.preferences, style = MaterialTheme.typography.headlineSmall)
 
             Spacer(Modifier.height(16.dp))
 
@@ -301,7 +317,7 @@ private fun SettingsMainScreen(
                     value = THEMES.firstOrNull { it.first == theme }?.second ?: theme,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Theme") },
+                    label = { Text(s.theme) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = themeExpanded) },
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                 )
@@ -316,6 +332,7 @@ private fun SettingsMainScreen(
                                 theme = value
                                 ThemeState.mode = value
                                 themeExpanded = false
+                                savePreferences(newTheme = value)
                             },
                         )
                     }
@@ -333,7 +350,7 @@ private fun SettingsMainScreen(
                     value = LANGUAGES.firstOrNull { it.first == language }?.second ?: language,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Language") },
+                    label = { Text(s.language) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded) },
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                 )
@@ -347,6 +364,8 @@ private fun SettingsMainScreen(
                             onClick = {
                                 language = value
                                 languageExpanded = false
+                                LanguageState.language = value
+                                savePreferences(newLanguage = value)
                             },
                         )
                     }
@@ -361,20 +380,24 @@ private fun SettingsMainScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Memory Auto-Recall")
+                Text(s.memoryAutoRecall)
                 Switch(
                     checked = memoryAutoRecall,
-                    onCheckedChange = { memoryAutoRecall = it },
+                    onCheckedChange = {
+                        memoryAutoRecall = it
+                        savePreferences(newMemoryAutoRecall = it)
+                    },
                 )
             }
 
             Spacer(Modifier.height(12.dp))
 
             // Memory extraction interval
-            Text("Memory Extraction Interval: ${memoryInterval.toInt()} messages")
+            Text(s.memoryExtractionInterval(memoryInterval.toInt()))
             Slider(
                 value = memoryInterval,
                 onValueChange = { memoryInterval = it },
+                onValueChangeFinished = { savePreferences(newMemoryInterval = memoryInterval.toInt()) },
                 valueRange = 5f..30f,
                 steps = 24,
                 modifier = Modifier.fillMaxWidth(),
@@ -383,10 +406,11 @@ private fun SettingsMainScreen(
             Spacer(Modifier.height(12.dp))
 
             // Daily article budget
-            Text("Daily Article Budget: ${dailyBudget.toInt()}")
+            Text(s.dailyArticleBudget(dailyBudget.toInt()))
             Slider(
                 value = dailyBudget,
                 onValueChange = { dailyBudget = it },
+                onValueChangeFinished = { savePreferences(newDailyBudget = dailyBudget.toInt()) },
                 valueRange = 20f..500f,
                 steps = 23,
                 modifier = Modifier.fillMaxWidth(),
@@ -395,10 +419,11 @@ private fun SettingsMainScreen(
             Spacer(Modifier.height(12.dp))
 
             // Analysis max per cycle
-            Text("Analysis Max Per Cycle: ${analysisMax.toInt()}")
+            Text(s.analysisMaxPerCycle(analysisMax.toInt()))
             Slider(
                 value = analysisMax,
                 onValueChange = { analysisMax = it },
+                onValueChangeFinished = { savePreferences(newAnalysisMax = analysisMax.toInt()) },
                 valueRange = 1f..50f,
                 steps = 48,
                 modifier = Modifier.fillMaxWidth(),
@@ -406,7 +431,7 @@ private fun SettingsMainScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            Text("Data Management", style = MaterialTheme.typography.headlineSmall)
+            Text(s.dataManagement, style = MaterialTheme.typography.headlineSmall)
 
             Spacer(Modifier.height(12.dp))
 
@@ -414,7 +439,7 @@ private fun SettingsMainScreen(
                 onClick = onNavigateToSources,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Manage Sources")
+                Text(s.manageSources)
             }
 
             Spacer(Modifier.height(8.dp))
@@ -423,24 +448,24 @@ private fun SettingsMainScreen(
                 onClick = onNavigateToProjects,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Manage Research Projects")
+                Text(s.manageResearchProjects)
             }
 
             Spacer(Modifier.height(24.dp))
 
-            Text("Backup", style = MaterialTheme.typography.headlineSmall)
+            Text(s.backup, style = MaterialTheme.typography.headlineSmall)
 
             Spacer(Modifier.height(12.dp))
 
             OutlinedButton(
                 onClick = {
                     scope.launch {
-                        snackbarHostState.showSnackbar("Export is available via server API (POST /api/archive/export)")
+                        snackbarHostState.showSnackbar(s.exportAvailableViaApi)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Export Data")
+                Text(s.exportData)
             }
 
             Spacer(Modifier.height(8.dp))
@@ -448,12 +473,12 @@ private fun SettingsMainScreen(
             OutlinedButton(
                 onClick = {
                     scope.launch {
-                        snackbarHostState.showSnackbar("Import is available via server API (POST /api/archive/import)")
+                        snackbarHostState.showSnackbar(s.importAvailableViaApi)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Import Data")
+                Text(s.importData)
             }
         }
     }

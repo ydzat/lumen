@@ -49,11 +49,13 @@ import com.lumen.core.database.entities.Digest
 import com.lumen.core.database.entities.ResearchProject
 import com.lumen.research.ProjectManager
 import com.lumen.research.digest.DigestFormatter
+import com.lumen.ui.i18n.strings
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DigestHistoryScreen(onBack: () -> Unit) {
+    val s = strings()
     val db = koinInject<LumenDatabase>()
     val projectManager = koinInject<ProjectManager>()
     val digestFormatter = koinInject<DigestFormatter>()
@@ -80,11 +82,11 @@ fun DigestHistoryScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
             }
             Spacer(Modifier.weight(1f))
             Text(
-                text = "Digest History",
+                text = s.digestHistory,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -98,11 +100,11 @@ fun DigestHistoryScreen(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         ) {
             OutlinedTextField(
-                value = if (selectedProjectId == 0L) "All Projects"
-                else projects.firstOrNull { it.id == selectedProjectId }?.name ?: "All Projects",
+                value = if (selectedProjectId == 0L) s.allProjects
+                else projects.firstOrNull { it.id == selectedProjectId }?.name ?: s.allProjects,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Filter by Project") },
+                label = { Text(s.filterByProject) },
                 trailingIcon = {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = projectExpanded)
                 },
@@ -115,7 +117,7 @@ fun DigestHistoryScreen(onBack: () -> Unit) {
                 onDismissRequest = { projectExpanded = false },
             ) {
                 DropdownMenuItem(
-                    text = { Text("All Projects") },
+                    text = { Text(s.allProjects) },
                     onClick = {
                         selectedProjectId = 0L
                         projectExpanded = false
@@ -149,13 +151,13 @@ fun DigestHistoryScreen(onBack: () -> Unit) {
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "No digests yet",
+                        text = s.noDigestsYet,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Digests are generated after articles are collected and analyzed.",
+                        text = s.digestGeneratedAfterCollection,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -231,10 +233,11 @@ private fun DigestDetailDialog(
     formattedContent: String,
     onDismiss: () -> Unit,
 ) {
+    val s = strings()
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(s.close) }
         },
         title = {
             Column {

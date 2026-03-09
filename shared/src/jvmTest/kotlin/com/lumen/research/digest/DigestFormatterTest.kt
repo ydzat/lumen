@@ -40,7 +40,7 @@ class DigestFormatterTest {
 
         assertTrue(output.contains("# AI Research Digest"))
         assertTrue(output.contains("Date: 2026-03-07"))
-        assertTrue(output.contains("## Highlights"))
+        assertTrue(output.contains("## Overview"))
         assertTrue(output.contains("transformer architectures"))
         assertTrue(output.contains("## Source Breakdown"))
         assertTrue(output.contains("arXiv CS.AI: 5 article(s)"))
@@ -64,17 +64,17 @@ class DigestFormatterTest {
         val output = formatter.format(digest)
 
         assertTrue(output.contains("# AI Research Digest"))
-        assertTrue(output.contains("## Highlights"))
+        assertTrue(output.contains("## Overview"))
         assertTrue(!output.contains("## Source Breakdown"))
     }
 
     @Test
-    fun format_withEmptyContent_skipsHighlights() {
+    fun format_withEmptyContent_skipsOverview() {
         val digest = makeDigest(content = "")
         val output = formatter.format(digest)
 
         assertTrue(output.contains("# AI Research Digest"))
-        assertTrue(!output.contains("## Highlights"))
+        assertTrue(!output.contains("## Overview"))
     }
 
     @Test
@@ -89,13 +89,13 @@ class DigestFormatterTest {
     @Test
     fun format_withProjectSections_rendersProjectHeaders() {
         val sections = Json.encodeToString(listOf(
-            DigestGenerator.ProjectSection(1, "AI Research", "- Paper A: Summary A", 2),
-            DigestGenerator.ProjectSection(2, "HPC", "- Paper B: Summary B", 1),
+            DigestGenerator.ProjectSection(projectId = 1, projectName = "AI Research", highlights = "- Paper A: Summary A", articleCount = 2),
+            DigestGenerator.ProjectSection(projectId = 2, projectName = "HPC", highlights = "- Paper B: Summary B", articleCount = 1),
         ))
         val digest = makeDigest(projectSections = sections)
         val output = formatter.format(digest)
 
-        assertTrue(output.contains("## Project Sections"))
+        assertTrue(output.contains("## Sections"))
         assertTrue(output.contains("### AI Research (2 articles)"))
         assertTrue(output.contains("- Paper A: Summary A"))
         assertTrue(output.contains("### HPC (1 article)"))
@@ -119,7 +119,7 @@ class DigestFormatterTest {
     @Test
     fun format_withBothSectionsAndSparks_rendersAll() {
         val sections = Json.encodeToString(listOf(
-            DigestGenerator.ProjectSection(1, "AI Research", "- Paper A: Summary", 1),
+            DigestGenerator.ProjectSection(projectId = 1, projectName = "AI Research", highlights = "- Paper A: Summary", articleCount = 1),
         ))
         val sparks = Json.encodeToString(listOf(
             DigestGenerator.SparkSection("Insight", "Description", listOf("kw1")),
@@ -134,15 +134,15 @@ class DigestFormatterTest {
         )
         val output = formatter.format(digest)
 
-        assertTrue(output.contains("## Highlights"))
-        assertTrue(output.contains("## Project Sections"))
+        assertTrue(output.contains("## Overview"))
+        assertTrue(output.contains("## Sections"))
         assertTrue(output.contains("## Spark Insights"))
         assertTrue(output.contains("## Source Breakdown"))
-        val highlightsPos = output.indexOf("## Highlights")
-        val sectionsPos = output.indexOf("## Project Sections")
+        val overviewPos = output.indexOf("## Overview")
+        val sectionsPos = output.indexOf("## Sections")
         val sparksPos = output.indexOf("## Spark Insights")
         val breakdownPos = output.indexOf("## Source Breakdown")
-        assertTrue(highlightsPos < sectionsPos)
+        assertTrue(overviewPos < sectionsPos)
         assertTrue(sectionsPos < sparksPos)
         assertTrue(sparksPos < breakdownPos)
     }
@@ -152,7 +152,7 @@ class DigestFormatterTest {
         val digest = makeDigest(projectSections = "")
         val output = formatter.format(digest)
 
-        assertTrue(!output.contains("## Project Sections"))
+        assertTrue(!output.contains("## Sections"))
     }
 
     @Test

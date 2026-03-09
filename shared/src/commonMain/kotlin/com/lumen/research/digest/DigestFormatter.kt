@@ -15,7 +15,7 @@ class DigestFormatter {
         sb.appendLine()
 
         if (digest.content.isNotBlank()) {
-            sb.appendLine("## Highlights")
+            sb.appendLine("## Overview")
             sb.appendLine()
             sb.appendLine(digest.content)
             sb.appendLine()
@@ -23,14 +23,24 @@ class DigestFormatter {
 
         val sections = parseProjectSections(digest.projectSections)
         if (sections.isNotEmpty()) {
-            sb.appendLine("## Project Sections")
+            sb.appendLine("## Sections")
             sb.appendLine()
             for (section in sections) {
                 val articleLabel = if (section.articleCount == 1) "article" else "articles"
                 sb.appendLine("### ${section.projectName} (${section.articleCount} $articleLabel)")
                 sb.appendLine()
                 if (section.highlights.isNotBlank()) {
+                    sb.appendLine("**Key Findings:**")
                     sb.appendLine(section.highlights)
+                    sb.appendLine()
+                }
+                if (section.trends.isNotBlank()) {
+                    sb.appendLine("**Trends:**")
+                    sb.appendLine(section.trends)
+                    sb.appendLine()
+                }
+                if (section.insight.isNotBlank()) {
+                    sb.appendLine("**Insight:** ${section.insight}")
                     sb.appendLine()
                 }
             }
@@ -75,7 +85,7 @@ class DigestFormatter {
         return "${digest.title}: $firstParagraph"
     }
 
-    private fun parseSourceBreakdown(raw: String): List<DigestGenerator.SourceBreakdownEntry> {
+    fun parseSourceBreakdown(raw: String): List<DigestGenerator.SourceBreakdownEntry> {
         if (raw.isBlank()) return emptyList()
         return try {
             json.decodeFromString<List<DigestGenerator.SourceBreakdownEntry>>(raw)
@@ -84,7 +94,7 @@ class DigestFormatter {
         }
     }
 
-    private fun parseProjectSections(raw: String): List<DigestGenerator.ProjectSection> {
+    fun parseProjectSections(raw: String): List<DigestGenerator.ProjectSection> {
         if (raw.isBlank()) return emptyList()
         return try {
             json.decodeFromString<List<DigestGenerator.ProjectSection>>(raw)

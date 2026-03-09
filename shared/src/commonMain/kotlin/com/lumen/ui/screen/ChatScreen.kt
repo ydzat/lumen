@@ -93,6 +93,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.getKoin
+import com.lumen.ui.i18n.strings
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 
@@ -127,6 +128,7 @@ fun ChatScreen() {
 private fun ConversationListScreen(
     onOpenConversation: (Long) -> Unit,
 ) {
+    val s = strings()
     val conversationManager = koinInject<ConversationManager>()
     val personaManager = koinInject<PersonaManager>()
     val projectManager = getKoin().getOrNull<ProjectManager>()
@@ -149,7 +151,7 @@ private fun ConversationListScreen(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showNewDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "New conversation")
+                Icon(Icons.Default.Add, contentDescription = s.newConversation)
             }
         },
     ) { padding ->
@@ -219,8 +221,8 @@ private fun ConversationListScreen(
     deleteTarget?.let { conversation ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("Delete conversation?") },
-            text = { Text("\"${conversation.title}\" and all its messages will be permanently deleted.") },
+            title = { Text(s.deleteConversation) },
+            text = { Text(s.deleteConversationConfirm(conversation.title)) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -228,10 +230,10 @@ private fun ConversationListScreen(
                         deleteTarget = null
                         loadData()
                     }
-                }) { Text("Delete") }
+                }) { Text(s.delete) }
             },
             dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+                TextButton(onClick = { deleteTarget = null }) { Text(s.cancel) }
             },
         )
     }
@@ -244,6 +246,7 @@ private fun ConversationCard(
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val s = strings()
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
@@ -285,7 +288,7 @@ private fun ConversationCard(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = s.delete,
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -301,6 +304,7 @@ private fun NewConversationDialog(
     onDismiss: () -> Unit,
     onCreate: (title: String, personaId: Long, projectId: Long) -> Unit,
 ) {
+    val s = strings()
     var title by remember { mutableStateOf("") }
     var selectedPersonaId by remember { mutableStateOf(personas.firstOrNull { it.isActive }?.id ?: 0L) }
     var selectedProjectId by remember { mutableStateOf(0L) }
@@ -309,14 +313,14 @@ private fun NewConversationDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Conversation") },
+        title = { Text(s.newConversation) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Title") },
-                    placeholder = { Text("e.g. Research discussion") },
+                    label = { Text(s.title) },
+                    placeholder = { Text(s.titlePlaceholder) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -328,10 +332,10 @@ private fun NewConversationDialog(
                         onExpandedChange = { personaExpanded = it },
                     ) {
                         OutlinedTextField(
-                            value = personas.firstOrNull { it.id == selectedPersonaId }?.name ?: "Default",
+                            value = personas.firstOrNull { it.id == selectedPersonaId }?.name ?: s.defaultPersona,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Persona") },
+                            label = { Text(s.persona) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = personaExpanded) },
                             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                         )
@@ -340,7 +344,7 @@ private fun NewConversationDialog(
                             onDismissRequest = { personaExpanded = false },
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Default") },
+                                text = { Text(s.defaultPersona) },
                                 onClick = {
                                     selectedPersonaId = 0L
                                     personaExpanded = false
@@ -366,11 +370,11 @@ private fun NewConversationDialog(
                         onExpandedChange = { projectExpanded = it },
                     ) {
                         OutlinedTextField(
-                            value = if (selectedProjectId == 0L) "None"
-                            else projects.firstOrNull { it.id == selectedProjectId }?.name ?: "None",
+                            value = if (selectedProjectId == 0L) s.none
+                            else projects.firstOrNull { it.id == selectedProjectId }?.name ?: s.none,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Project (optional)") },
+                            label = { Text(s.projectOptional) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = projectExpanded) },
                             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                         )
@@ -379,7 +383,7 @@ private fun NewConversationDialog(
                             onDismissRequest = { projectExpanded = false },
                         ) {
                             DropdownMenuItem(
-                                text = { Text("None") },
+                                text = { Text(s.none) },
                                 onClick = {
                                     selectedProjectId = 0L
                                     projectExpanded = false
@@ -405,10 +409,10 @@ private fun NewConversationDialog(
                     val effectiveTitle = title.ifBlank { LumenAgent.DEFAULT_TITLE }
                     onCreate(effectiveTitle, selectedPersonaId, selectedProjectId)
                 },
-            ) { Text("Create") }
+            ) { Text(s.create) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(s.cancel) }
         },
     )
 }
@@ -428,6 +432,7 @@ private fun ConversationChatScreen(
     conversationId: Long,
     onBack: () -> Unit,
 ) {
+    val s = strings()
     val conversationManager = koinInject<ConversationManager>()
     val personaManager = koinInject<PersonaManager>()
     val documentManager = getKoin().getOrNull<DocumentManager>()
@@ -452,7 +457,7 @@ private fun ConversationChatScreen(
     var showDocumentList by remember { mutableStateOf(false) }
     val projectId = initialConversation?.projectId ?: 0L
     val currentPersonaName = remember(currentPersonaId) {
-        if (currentPersonaId > 0) personaManager.get(currentPersonaId)?.name ?: "Default" else "Default"
+        if (currentPersonaId > 0) personaManager.get(currentPersonaId)?.name ?: s.defaultPersona else s.defaultPersona
     }
     val agent = remember(currentPersonaId) {
         agentFactory.get<LumenAgent> {
@@ -621,7 +626,7 @@ private fun ConversationChatScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
                     }
                 },
                 actions = {
@@ -629,14 +634,14 @@ private fun ConversationChatScreen(
                         IconButton(
                             onClick = { showDocumentList = true },
                         ) {
-                            Icon(Icons.Default.Description, contentDescription = "Documents")
+                            Icon(Icons.Default.Description, contentDescription = s.documents)
                         }
                     }
                     IconButton(
                         onClick = { showPersonaPicker = true },
                         enabled = !isLoading,
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = "Change persona")
+                        Icon(Icons.Default.Person, contentDescription = s.changePersona)
                     }
                 },
             )
@@ -711,7 +716,7 @@ private fun ConversationChatScreen(
         val personas = remember { personaManager.listAll() }
         AlertDialog(
             onDismissRequest = { showPersonaPicker = false },
-            title = { Text("Select Persona") },
+            title = { Text(s.selectPersona) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     // Default option
@@ -724,7 +729,7 @@ private fun ConversationChatScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
-                            text = "Default",
+                            text = s.defaultPersona,
                             fontWeight = if (currentPersonaId == 0L) FontWeight.Bold else FontWeight.Normal,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -748,7 +753,7 @@ private fun ConversationChatScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showPersonaPicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showPersonaPicker = false }) { Text(s.cancel) }
             },
         )
     }
@@ -1092,6 +1097,7 @@ private fun InputBar(
     showAttach: Boolean = false,
     isAttaching: Boolean = false,
 ) {
+    val s = strings()
     Surface(
         tonalElevation = 3.dp,
     ) {
@@ -1114,7 +1120,7 @@ private fun InputBar(
                     } else {
                         Icon(
                             Icons.Default.AttachFile,
-                            contentDescription = "Attach document",
+                            contentDescription = s.attachDocument,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -1124,7 +1130,7 @@ private fun InputBar(
             OutlinedTextField(
                 value = text,
                 onValueChange = onTextChange,
-                placeholder = { Text("Type a message...") },
+                placeholder = { Text(s.typeAMessage) },
                 modifier = Modifier.weight(1f),
                 maxLines = 4,
                 shape = RoundedCornerShape(24.dp),
@@ -1142,7 +1148,7 @@ private fun InputBar(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
+                        contentDescription = s.send,
                         tint = if (text.isNotBlank()) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1160,12 +1166,13 @@ private fun DocumentListDialog(
     onDeleted: suspend () -> Unit,
     scope: kotlinx.coroutines.CoroutineScope,
 ) {
+    val s = strings()
     var documents by remember { mutableStateOf(documentManager.listByProject(projectId)) }
     var deleteTarget by remember { mutableStateOf<Document?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Documents") },
+        title = { Text(s.documents) },
         text = {
             if (documents.isEmpty()) {
                 Text(
@@ -1199,7 +1206,7 @@ private fun DocumentListDialog(
                             IconButton(onClick = { deleteTarget = document }) {
                                 Icon(
                                     Icons.Default.Delete,
-                                    contentDescription = "Delete",
+                                    contentDescription = s.delete,
                                     tint = MaterialTheme.colorScheme.error,
                                 )
                             }
@@ -1209,15 +1216,15 @@ private fun DocumentListDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(s.close) }
         },
     )
 
     deleteTarget?.let { document ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("Delete document?") },
-            text = { Text("\"${document.filename}\" and all its chunks will be permanently deleted.") },
+            title = { Text(s.deleteDocument) },
+            text = { Text(s.deleteDocumentConfirm(document.filename)) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -1226,10 +1233,10 @@ private fun DocumentListDialog(
                         documents = documentManager.listByProject(projectId)
                         onDeleted()
                     }
-                }) { Text("Delete") }
+                }) { Text(s.delete) }
             },
             dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+                TextButton(onClick = { deleteTarget = null }) { Text(s.cancel) }
             },
         )
     }

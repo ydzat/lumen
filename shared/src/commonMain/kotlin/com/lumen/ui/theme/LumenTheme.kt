@@ -1,13 +1,16 @@
 package com.lumen.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
 object ThemeState {
@@ -88,8 +91,12 @@ fun LumenTheme(content: @Composable () -> Unit) {
         else -> isSystemInDarkTheme()
     }
     val colorScheme = if (darkTheme) LumenDarkColorScheme else LumenLightColorScheme
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content,
-    )
+    MaterialTheme(colorScheme = colorScheme) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            content()
+        }
+    }
 }

@@ -41,10 +41,12 @@ import com.lumen.core.database.entities.Source
 import com.lumen.core.util.formatEpochDate
 import com.lumen.research.collector.SourceManager
 import com.lumen.ui.displaySourceType
+import com.lumen.ui.i18n.strings
 import org.koin.compose.koinInject
 
 @Composable
 fun SourcesScreen(onBack: () -> Unit) {
+    val s = strings()
     val sourceManager = koinInject<SourceManager>()
 
     var sources by remember { mutableStateOf<List<Source>>(emptyList()) }
@@ -61,7 +63,7 @@ fun SourcesScreen(onBack: () -> Unit) {
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add source")
+                Icon(Icons.Default.Add, contentDescription = s.addSource)
             }
         },
     ) { padding ->
@@ -73,11 +75,11 @@ fun SourcesScreen(onBack: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = "Sources",
+                    text = s.sources,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -106,7 +108,7 @@ fun SourcesScreen(onBack: () -> Unit) {
 
     if (showAddDialog) {
         SourceFormDialog(
-            title = "Add Source",
+            title = s.addSource,
             initial = null,
             onDismiss = { showAddDialog = false },
             onConfirm = { name, url, category, description ->
@@ -127,7 +129,7 @@ fun SourcesScreen(onBack: () -> Unit) {
 
     editingSource?.let { source ->
         SourceFormDialog(
-            title = "Edit Source",
+            title = s.editSource,
             initial = source,
             onDismiss = { editingSource = null },
             onConfirm = { name, url, category, description ->
@@ -148,19 +150,19 @@ fun SourcesScreen(onBack: () -> Unit) {
     deletingSource?.let { source ->
         AlertDialog(
             onDismissRequest = { deletingSource = null },
-            title = { Text("Delete Source") },
-            text = { Text("Delete \"${source.name}\"? This cannot be undone.") },
+            title = { Text(s.deleteSource) },
+            text = { Text(s.deleteSourceConfirm(source.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     sourceManager.remove(source.id)
                     deletingSource = null
                     loadSources()
                 }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(s.delete, color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deletingSource = null }) { Text("Cancel") }
+                TextButton(onClick = { deletingSource = null }) { Text(s.cancel) }
             },
         )
     }
@@ -173,6 +175,7 @@ private fun SourceCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val s = strings()
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -213,7 +216,7 @@ private fun SourceCard(
                 }
                 if (source.consecutiveFailures > 0) {
                     Text(
-                        text = "${source.consecutiveFailures} consecutive failure(s)",
+                        text = s.consecutiveFailures(source.consecutiveFailures),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -230,12 +233,12 @@ private fun SourceCard(
 
             Switch(checked = source.enabled, onCheckedChange = { onToggle() })
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                Icon(Icons.Default.Edit, contentDescription = s.edit)
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = s.delete,
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -250,6 +253,7 @@ private fun SourceFormDialog(
     onDismiss: () -> Unit,
     onConfirm: (name: String, url: String, category: String, description: String) -> Unit,
 ) {
+    val s = strings()
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var url by remember { mutableStateOf(initial?.url ?: "") }
     var category by remember { mutableStateOf(initial?.category ?: "") }
@@ -263,29 +267,29 @@ private fun SourceFormDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(s.name) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("Feed URL") },
+                    label = { Text(s.feedUrl) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = category,
                     onValueChange = { category = it },
-                    label = { Text("Category") },
-                    placeholder = { Text("e.g. academic, tech, news") },
+                    label = { Text(s.category) },
+                    placeholder = { Text(s.categoryPlaceholder) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description (optional)") },
+                    label = { Text(s.descriptionOptional) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -296,11 +300,11 @@ private fun SourceFormDialog(
                 onClick = { onConfirm(name.trim(), url.trim(), category.trim(), description.trim()) },
                 enabled = name.isNotBlank() && url.isNotBlank(),
             ) {
-                Text("Save")
+                Text(s.save)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(s.cancel) }
         },
     )
 }
