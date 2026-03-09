@@ -1,0 +1,52 @@
+package com.lumen.companion.agent
+
+import com.lumen.core.config.LlmConfig
+import com.lumen.core.database.entities.Persona
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class SystemPromptTest {
+
+    @Test
+    fun buildSystemPrompt_withNoPersona_usesDefault() {
+        val agent = LumenAgent(config = LlmConfig(apiKey = "test"))
+        try {
+            assertTrue(agent.systemPrompt.startsWith(LumenAgent.DEFAULT_SYSTEM_PROMPT))
+        } finally {
+            agent.close()
+        }
+    }
+
+    @Test
+    fun buildSystemPrompt_withPersona_usesPersonaPrompt() {
+        val persona = Persona(
+            id = 1,
+            name = "Test Bot",
+            systemPrompt = "You are a test bot.",
+        )
+        val agent = LumenAgent(config = LlmConfig(apiKey = "test"), persona = persona)
+        try {
+            assertTrue(agent.systemPrompt.startsWith("You are a test bot."))
+        } finally {
+            agent.close()
+        }
+    }
+
+    @Test
+    fun buildSystemPrompt_withNoTools_excludesToolSection() {
+        val persona = Persona(
+            id = 1,
+            name = "Test Bot",
+            systemPrompt = "You are a test bot.",
+        )
+        val agent = LumenAgent(config = LlmConfig(apiKey = "test"), persona = persona)
+        try {
+            assertTrue(agent.systemPrompt.startsWith("You are a test bot."))
+            assertFalse(agent.systemPrompt.contains("Available tools:"))
+        } finally {
+            agent.close()
+        }
+    }
+}

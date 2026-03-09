@@ -1,0 +1,736 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:5058639601936654895",
+      "lastPropertyId": "13:875518598519683171",
+      "name": "MemoryEntry",
+      "properties": [
+        {
+          "id": "1:2053576415494612112",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7646972698673919649",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "3:5066359925847167460",
+          "name": "category",
+          "type": 9
+        },
+        {
+          "id": "4:1008107271881155690",
+          "name": "source",
+          "type": 9
+        },
+        {
+          "id": "5:6901201238745743223",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "6:80667454690768589",
+          "name": "updatedAt",
+          "type": 6
+        },
+        {
+          "id": "7:8617985093341123644",
+          "name": "originalTimestamp",
+          "type": 9
+        },
+        {
+          "id": "8:6081410009662688561",
+          "name": "embedding",
+          "indexId": "1:7131143336178102071",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "9:6659059462644339104",
+          "name": "keywords",
+          "type": 9
+        },
+        {
+          "id": "10:5102832094508892069",
+          "name": "importance",
+          "type": 7
+        },
+        {
+          "id": "11:6436902098720229956",
+          "name": "accessCount",
+          "type": 5
+        },
+        {
+          "id": "12:1379546046453933427",
+          "name": "lastAccessedAt",
+          "type": 6
+        },
+        {
+          "id": "13:875518598519683171",
+          "name": "mergedFrom",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:4653137260564483636",
+      "lastPropertyId": "15:387256366910641032",
+      "name": "Source",
+      "properties": [
+        {
+          "id": "1:2546947437389648082",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4056873870404786470",
+          "name": "name",
+          "indexId": "2:6271851765822236156",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:7010900921451758531",
+          "name": "url",
+          "type": 9
+        },
+        {
+          "id": "4:7697204870753797",
+          "name": "type",
+          "type": 9
+        },
+        {
+          "id": "5:8548859774784867749",
+          "name": "enabled",
+          "type": 1
+        },
+        {
+          "id": "6:5484413928422902728",
+          "name": "lastFetchedAt",
+          "type": 6
+        },
+        {
+          "id": "7:2059055193395185650",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "8:5792829881987503843",
+          "name": "category",
+          "type": 9
+        },
+        {
+          "id": "9:817308523282549517",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "10:242733094203334186",
+          "name": "icon",
+          "type": 9
+        },
+        {
+          "id": "11:849383771791015502",
+          "name": "refreshIntervalMin",
+          "type": 5
+        },
+        {
+          "id": "12:9173718158817041311",
+          "name": "config",
+          "type": 9
+        },
+        {
+          "id": "13:8487308065553434881",
+          "name": "lastError",
+          "type": 9
+        },
+        {
+          "id": "14:6032407895019520050",
+          "name": "consecutiveFailures",
+          "type": 5
+        },
+        {
+          "id": "15:387256366910641032",
+          "name": "nextRetryAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:2083761251558003683",
+      "lastPropertyId": "25:3753065340543651950",
+      "name": "Article",
+      "properties": [
+        {
+          "id": "1:7519062300537382946",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6739127317577474490",
+          "name": "sourceId",
+          "type": 6
+        },
+        {
+          "id": "3:2683976597706343408",
+          "name": "title",
+          "indexId": "3:6563508123028571784",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:295139628076099403",
+          "name": "url",
+          "indexId": "4:9151541793602518559",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "5:2811680483336577358",
+          "name": "summary",
+          "type": 9
+        },
+        {
+          "id": "6:6202525177757466062",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "7:4372403451842392138",
+          "name": "author",
+          "type": 9
+        },
+        {
+          "id": "8:7736705599924692772",
+          "name": "publishedAt",
+          "type": 6
+        },
+        {
+          "id": "9:6675773818185487617",
+          "name": "fetchedAt",
+          "indexId": "9:233493341227495940",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "10:9140870730389160215",
+          "name": "readAt",
+          "type": 6
+        },
+        {
+          "id": "11:2817689056848889549",
+          "name": "starred",
+          "type": 1
+        },
+        {
+          "id": "12:5395759842918692557",
+          "name": "embedding",
+          "indexId": "5:2361177490474032418",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "13:9205957922755654295",
+          "name": "aiSummary",
+          "type": 9
+        },
+        {
+          "id": "14:1140654260784528497",
+          "name": "aiRelevanceScore",
+          "type": 7
+        },
+        {
+          "id": "15:4153385607088227593",
+          "name": "keywords",
+          "type": 9
+        },
+        {
+          "id": "16:1591522405916819586",
+          "name": "projectIds",
+          "type": 9
+        },
+        {
+          "id": "17:739470385167944193",
+          "name": "doi",
+          "indexId": "19:2913585777680798410",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "18:2247057658077952600",
+          "name": "arxivId",
+          "indexId": "20:5076776415974295405",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "19:4619267398625810964",
+          "name": "analysisStatus",
+          "indexId": "21:1126771813622463222",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "20:3140015495037832080",
+          "name": "aiTranslation",
+          "type": 9
+        },
+        {
+          "id": "21:19657585341969755",
+          "name": "citationCount",
+          "type": 5
+        },
+        {
+          "id": "22:4641413990121601447",
+          "name": "influentialCitationCount",
+          "type": 5
+        },
+        {
+          "id": "23:2404891742061775052",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "24:8172504760767664201",
+          "name": "sourceType",
+          "type": 9
+        },
+        {
+          "id": "25:3753065340543651950",
+          "name": "deepAnalysisStatus",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:3670977489884201084",
+      "lastPropertyId": "9:5108964044337640121",
+      "name": "Digest",
+      "properties": [
+        {
+          "id": "1:2168280301823878498",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2337437370057109792",
+          "name": "date",
+          "indexId": "6:5004452048201281634",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:7444020710895606557",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "4:6345000886871110749",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "5:267301972044489843",
+          "name": "sourceBreakdown",
+          "type": 9
+        },
+        {
+          "id": "6:8078019888024628901",
+          "name": "projectId",
+          "type": 6
+        },
+        {
+          "id": "7:5283064180091067881",
+          "name": "createdAt",
+          "indexId": "10:7485888030327260848",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "8:1316472105998477563",
+          "name": "sparks",
+          "type": 9
+        },
+        {
+          "id": "9:5108964044337640121",
+          "name": "projectSections",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "5:6135864324703906304",
+      "lastPropertyId": "8:772463789688365875",
+      "name": "ResearchProject",
+      "properties": [
+        {
+          "id": "1:2901446687961502341",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2150400648038466930",
+          "name": "name",
+          "indexId": "7:2020694099207040207",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:7649224724394070634",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "4:36626305228626914",
+          "name": "keywords",
+          "type": 9
+        },
+        {
+          "id": "5:4977569246719959855",
+          "name": "embedding",
+          "indexId": "8:4748608305065077273",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "6:4331803527363143785",
+          "name": "isActive",
+          "type": 1
+        },
+        {
+          "id": "7:4116926264995883723",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "8:772463789688365875",
+          "name": "updatedAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "6:240756537736968805",
+      "lastPropertyId": "7:4092362793311177868",
+      "name": "Conversation",
+      "properties": [
+        {
+          "id": "1:2731150710373582808",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7870046011322871225",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "3:4252595486577391478",
+          "name": "personaId",
+          "type": 6
+        },
+        {
+          "id": "4:8189590622650041800",
+          "name": "projectId",
+          "type": 6
+        },
+        {
+          "id": "5:8168406354662041847",
+          "name": "messageCount",
+          "type": 5
+        },
+        {
+          "id": "6:1446778923716633300",
+          "name": "createdAt",
+          "indexId": "11:2832938370493950815",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "7:4092362793311177868",
+          "name": "updatedAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "7:1638215390547182605",
+      "lastPropertyId": "7:6836727054636615056",
+      "name": "Document",
+      "properties": [
+        {
+          "id": "1:6764876889536553247",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3315298979606022292",
+          "name": "projectId",
+          "indexId": "12:1188335089156303466",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:7238597986343505645",
+          "name": "filename",
+          "type": 9
+        },
+        {
+          "id": "4:3470053274666783176",
+          "name": "mimeType",
+          "type": 9
+        },
+        {
+          "id": "5:5820869281047441904",
+          "name": "textContent",
+          "type": 9
+        },
+        {
+          "id": "6:5003830033356773695",
+          "name": "chunkCount",
+          "type": 5
+        },
+        {
+          "id": "7:6836727054636615056",
+          "name": "createdAt",
+          "indexId": "13:3819453489919627266",
+          "type": 6,
+          "flags": 8
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "8:1374548346464271664",
+      "lastPropertyId": "6:3834482296854583317",
+      "name": "DocumentChunk",
+      "properties": [
+        {
+          "id": "1:517595935001894661",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2455106373098425012",
+          "name": "documentId",
+          "indexId": "14:4085443156166092025",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:5001123545664535239",
+          "name": "projectId",
+          "type": 6
+        },
+        {
+          "id": "4:1749401329481802917",
+          "name": "chunkIndex",
+          "type": 5
+        },
+        {
+          "id": "5:1511000103442984693",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "6:3834482296854583317",
+          "name": "embedding",
+          "indexId": "15:5380424047714635004",
+          "type": 28,
+          "flags": 8
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "9:2801143473473493661",
+      "lastPropertyId": "8:1656850096214542991",
+      "name": "Message",
+      "properties": [
+        {
+          "id": "1:8935306247913155106",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2259301221892203673",
+          "name": "conversationId",
+          "indexId": "16:2116070813892913428",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:7506229866732404865",
+          "name": "role",
+          "type": 9
+        },
+        {
+          "id": "4:6688694855999805016",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "5:103531120558572076",
+          "name": "toolName",
+          "type": 9
+        },
+        {
+          "id": "6:7069697735969034680",
+          "name": "toolArgs",
+          "type": 9
+        },
+        {
+          "id": "7:7814182496302732131",
+          "name": "createdAt",
+          "indexId": "17:7105360363318078108",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "8:1656850096214542991",
+          "name": "toolCallId",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "10:1935128386715263710",
+      "lastPropertyId": "8:5810961971394849317",
+      "name": "Persona",
+      "properties": [
+        {
+          "id": "1:8195791825894979810",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3464084357767366677",
+          "name": "name",
+          "indexId": "18:6207228239995082588",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:3063097827421331187",
+          "name": "systemPrompt",
+          "type": 9
+        },
+        {
+          "id": "4:2492914244989466611",
+          "name": "greeting",
+          "type": 9
+        },
+        {
+          "id": "5:5864085426335363853",
+          "name": "avatarEmoji",
+          "type": 9
+        },
+        {
+          "id": "6:4811946987521742272",
+          "name": "isBuiltIn",
+          "type": 1
+        },
+        {
+          "id": "7:2116580515961758709",
+          "name": "isActive",
+          "type": 1
+        },
+        {
+          "id": "8:5810961971394849317",
+          "name": "createdAt",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "11:8957765080492595551",
+      "lastPropertyId": "9:4622905926277364142",
+      "name": "ArticleSection",
+      "properties": [
+        {
+          "id": "1:4368637152561140827",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8675170525236008250",
+          "name": "articleId",
+          "indexId": "22:7771311078075894675",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:6950244218270447121",
+          "name": "sectionIndex",
+          "type": 5
+        },
+        {
+          "id": "4:4860352100752047265",
+          "name": "heading",
+          "type": 9
+        },
+        {
+          "id": "5:6513172009250150555",
+          "name": "content",
+          "type": 9
+        },
+        {
+          "id": "6:5565320643906721119",
+          "name": "level",
+          "type": 5
+        },
+        {
+          "id": "7:8981897744180029994",
+          "name": "isKeySection",
+          "type": 1
+        },
+        {
+          "id": "8:5579993030235408594",
+          "name": "aiCommentary",
+          "type": 9
+        },
+        {
+          "id": "9:4622905926277364142",
+          "name": "aiTranslation",
+          "type": 9
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "11:8957765080492595551",
+  "lastIndexId": "22:7771311078075894675",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}

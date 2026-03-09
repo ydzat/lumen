@@ -1,0 +1,24 @@
+services:
+  lumen-server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - lumen-data:/root/.lumen
+    # environment:
+    #   - LUMEN_ACCESS_TOKEN=your-token
+    #   - LUMEN_LLM_API_KEY=sk-xxx
+    #   - LUMEN_NTFY_URL=https://ntfy.sh
+    #   - LUMEN_NTFY_TOPIC=lumen
+    #   - LUMEN_CORS_ORIGINS=example.com:8080,myapp.local:3000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  lumen-data:

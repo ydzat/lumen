@@ -1,0 +1,401 @@
+package com.lumen.research.collector
+
+import com.lumen.core.database.LumenDatabase
+import com.lumen.core.database.entities.Article
+import com.lumen.core.database.entities.Article_
+import com.lumen.core.database.entities.Digest
+import io.objectbox.query.QueryBuilder.StringOrder
+import com.lumen.core.util.formatEpochDate
+import com.lumen.research.ProjectManager
+import com.lumen.research.analyzer.ArticleAnalyzer
+import com.lumen.research.analyzer.RelevanceScorer
+import com.lumen.research.archiver.ArticleArchiver
+import com.lumen.research.digest.DigestGenerator
+import com.lumen.research.parseCsvSet
+import com.lumen.research.spark.SparkEngine
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import java.util.concurrent.atomic.AtomicInteger
+
+class CollectorManager(
+    private val articleAnalyzer: ArticleAnalyzer,
+    private val relevanceScorer: RelevanceScorer,
+    private val digestGenerator: DigestGenerator,
+    private val dataSources: List<DataSource> = emptyList(),
+    private val sourceManager: SourceManager? = null,
+    private val deduplicator: Deduplicator? = null,
+    private val db: LumenDatabase? = null,
+    private val projectManager: ProjectManager? = null,
+    private val sparkEngine: SparkEngine? = null,
+    private val articleArchiver: ArticleArchiver? = null,
+    private val contentEnricher: ContentEnricher? = null,
+) {
+
+    suspend fun runPipeline(
+        analysisBudget: Int = 20,
+        fetchBudget: Int = 150,
+        progress: PipelineProgress? = null,
+    ): PipelineResult {
+        // 0. Generate spark keywords (cross-project discovery)
+        val sparkKeywords = if (sparkEngine != null && projectManager != null) {
+            val activeProjects = projectManager.listAll().filter { it.isActive }
+            try {
+                sparkEngine.generateSearchKeywords(activeProjects)
+            } catch (_: Exception) {
+                emptySet()
+            }
+        } else {
+            emptySet()
+        }
+
+        // 1. Fetch
+        progress?.onProgress(PipelineStage.FETCHING, 0, 1)
+        val (fetchedArticles, fetchErrors) = if (dataSources.isNotEmpty() && sourceManager != null) {
+            fetchViaDataSources(buildFetchContext(budget = fetchBudget, sparkKeywords = sparkKeywords))
+        } else {
+            emptyList<Article>() to emptyList<String>()
+        }
+
+        // 2. Dedup
+        val afterDedup: List<Article>
+        val duplicatesRemoved: Int
+        if (deduplicator != null && fetchedArticles.isNotEmpty()) {
+            progress?.onProgress(PipelineStage.DEDUPLICATING, 0, fetchedArticles.size)
+            val dedupResult = deduplicator.deduplicate(fetchedArticles)
+            afterDedup = dedupResult.unique
+            duplicatesRemoved = dedupResult.duplicatesRemoved
+        } else {
+            afterDedup = fetchedArticles
+            duplicatesRemoved = 0
+        }
+
+        // 2b. Persist new articles to DB for tiered processing
+        if (db != null && afterDedup.isNotEmpty()) {
+            val newArticles = afterDedup.filter { it.id == 0L }
+            if (newArticles.isNotEmpty()) {
+                db.articleBox.put(newArticles)
+            }
+        }
+
+        // 2c. Content enrichment — enrich both new and existing unenriched articles
+        val enrichedCount = if (contentEnricher != null) {
+            progress?.onProgress(PipelineStage.ENRICHING, 0, afterDedup.size)
+            try {
+                // Enrich new articles from this fetch + any previously unenriched in DB
+                val newEnriched = if (afterDedup.isNotEmpty()) {
+                    contentEnricher.enrichAll(afterDedup)
+                } else {
+                    0
+                }
+                val existingEnriched = contentEnricher.processUnenriched()
+                newEnriched + existingEnriched
+            } catch (_: Exception) {
+                0
+            }
+        } else {
+            0
+        }
+
+        // 3. Embed + Score pipeline (each article: embed → score immediately)
+        progress?.onProgress(PipelineStage.EMBEDDING, 0, afterDedup.size)
+        val (embeddedCount, scoredCount, scoredArticles) = embedAndScore(progress)
+        progress?.onProgress(PipelineStage.SCORING, scoredCount, scoredCount)
+
+        // 4. Analyze top N scored (concurrent LLM calls)
+        progress?.onProgress(PipelineStage.ANALYZING, 0, analysisBudget)
+        val analyzedCount = analyzeTop(analysisBudget, progress)
+
+        // 6. Digest
+        progress?.onProgress(PipelineStage.DIGESTING, 0, 1)
+        val today = formatEpochDate(System.currentTimeMillis())
+        val digest = try {
+            digestGenerator.generate(today)
+        } catch (_: Exception) {
+            null
+        }
+
+        // 7. Emergency archive (if storage exceeds limit)
+        val archivedCount = if (articleArchiver != null &&
+            articleArchiver.needsEmergencyArchive(ArticleArchiver.DEFAULT_MAX_ARTICLES)
+        ) {
+            try {
+                articleArchiver.emergencyArchive(ArticleArchiver.DEFAULT_MAX_ARTICLES).archived
+            } catch (_: Exception) {
+                0
+            }
+        } else {
+            0
+        }
+
+        return PipelineResult(
+            fetched = fetchedArticles.size,
+            enriched = enrichedCount,
+            embedded = embeddedCount,
+            analyzed = analyzedCount,
+            scored = scoredCount,
+            digest = digest,
+            scoredArticles = scoredArticles,
+            fetchErrors = fetchErrors,
+            duplicatesRemoved = duplicatesRemoved,
+            sparkKeywords = sparkKeywords,
+            archivedCount = archivedCount,
+        )
+    }
+
+    suspend fun runNow(progress: PipelineProgress? = null): PipelineResult =
+        runPipeline(progress = progress)
+
+    suspend fun fetchOnly(progress: PipelineProgress? = null): List<Article> {
+        progress?.onProgress(PipelineStage.FETCHING, 0, 1)
+        val (articles, _) = if (dataSources.isNotEmpty() && sourceManager != null) {
+            fetchViaDataSources(buildFetchContext())
+        } else {
+            emptyList<Article>() to emptyList<String>()
+        }
+        return articles
+    }
+
+    private suspend fun embedAndScore(
+        progress: PipelineProgress? = null,
+    ): Triple<Int, Int, List<Article>> {
+        if (db == null) return Triple(0, 0, emptyList())
+
+        val unembedded = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.NEW, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+            .filter { it.embedding.isEmpty() }
+
+        val scoredArticles = mutableListOf<Article>()
+        var embeddedCount = 0
+
+        // Batch embed all unembedded articles at once for efficiency
+        val embeddedArticles = try {
+            articleAnalyzer.embedBatchOnly(unembedded)
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        for (embedded in embeddedArticles) {
+            try {
+                embeddedCount++
+                progress?.onProgress(PipelineStage.EMBEDDING, embeddedCount, unembedded.size)
+
+                val scored = relevanceScorer.scoreAndPersist(embedded)
+                val projectIds = relevanceScorer.assignToProjects(scored)
+                val updated = scored.copy(
+                    analysisStatus = AnalysisStatus.SCORED,
+                    projectIds = projectIds.joinToString(","),
+                )
+                db.articleBox.put(updated)
+                scoredArticles.add(updated)
+            } catch (_: Exception) {
+                // Continue processing remaining articles on individual failures
+            }
+        }
+
+        // Also score any previously embedded but unscored articles
+        val previouslyEmbedded = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.EMBEDDED, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+        for (article in previouslyEmbedded) {
+            try {
+                val scored = relevanceScorer.scoreAndPersist(article)
+                val projectIds = relevanceScorer.assignToProjects(scored)
+                val updated = scored.copy(
+                    analysisStatus = AnalysisStatus.SCORED,
+                    projectIds = projectIds.joinToString(","),
+                )
+                db.articleBox.put(updated)
+                scoredArticles.add(updated)
+            } catch (_: Exception) {
+                // Continue
+            }
+        }
+
+        return Triple(embeddedCount, scoredArticles.size, scoredArticles)
+    }
+
+    suspend fun analyzeTop(limit: Int = 20, progress: PipelineProgress? = null): Int {
+        if (db == null) return 0
+        val allScored = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.SCORED, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+
+        if (allScored.isEmpty()) return 0
+
+        val hasRelevanceSignal = allScored.any { it.aiRelevanceScore > 0f }
+
+        val topScored = if (hasRelevanceSignal) {
+            // Normal mode: pick top N by relevance
+            allScored.sortedByDescending { it.aiRelevanceScore }.take(limit)
+        } else {
+            // No projects / no memory: distribute budget evenly across sources
+            selectRoundRobin(allScored, limit)
+        }
+
+        if (topScored.isEmpty()) return 0
+
+        val completed = AtomicInteger(0)
+        val semaphore = Semaphore(LLM_CONCURRENCY)
+
+        coroutineScope {
+            topScored.map { article ->
+                async {
+                    semaphore.withPermit {
+                        try {
+                            articleAnalyzer.analyzeWithLlm(article)
+                            val done = completed.incrementAndGet()
+                            progress?.onProgress(PipelineStage.ANALYZING, done, topScored.size)
+                        } catch (_: Exception) {
+                            // Continue with remaining articles on failure
+                        }
+                    }
+                }
+            }.awaitAll()
+        }
+
+        return completed.get()
+    }
+
+    suspend fun processUnembedded(): Int {
+        if (db == null) return 0
+        val unembedded = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.NEW, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+            .filter { it.embedding.isEmpty() }
+
+        var count = 0
+        for (article in unembedded) {
+            try {
+                articleAnalyzer.embedOnly(article)
+                count++
+            } catch (_: Exception) { }
+        }
+        return count
+    }
+
+    suspend fun scoreUnprocessed(): Pair<Int, List<Article>> {
+        if (db == null) return 0 to emptyList()
+        val embedded = db.articleBox.query()
+            .equal(Article_.analysisStatus, AnalysisStatus.EMBEDDED, StringOrder.CASE_SENSITIVE)
+            .build()
+            .use { it.find() }
+
+        val scoredArticles = mutableListOf<Article>()
+        for (article in embedded) {
+            val scored = relevanceScorer.scoreAndPersist(article)
+            val updated = scored.copy(analysisStatus = AnalysisStatus.SCORED)
+            db.articleBox.put(updated)
+            scoredArticles.add(updated)
+        }
+        return scoredArticles.size to scoredArticles
+    }
+
+    suspend fun analyzeSingle(articleId: Long): Article? {
+        if (db == null) return null
+        val article = db.articleBox.get(articleId) ?: return null
+        val toAnalyze = if (article.embedding.isEmpty()) {
+            articleAnalyzer.embedOnly(article)
+        } else {
+            article
+        }
+        return articleAnalyzer.analyzeWithLlm(toAnalyze)
+    }
+
+    internal fun buildFetchContext(
+        budget: Int = 150,
+        sparkKeywords: Set<String> = emptySet(),
+    ): FetchContext {
+        val allProjects = projectManager?.listAll() ?: emptyList()
+        val keywords = allProjects.flatMap { parseCsvSet(it.keywords) }.toSet()
+        return FetchContext(
+            activeProjects = allProjects,
+            keywords = keywords,
+            categories = emptySet(),
+            remainingBudget = budget,
+            sparkKeywords = sparkKeywords,
+        )
+    }
+
+    private suspend fun fetchViaDataSources(context: FetchContext): Pair<List<Article>, List<String>> {
+        val retryableSources = sourceManager!!.listRetryable()
+        val sourcesByType = retryableSources.groupBy { SourceType.fromString(it.type) }
+
+        val results = coroutineScope {
+            sourcesByType.map { (type, sources) ->
+                async {
+                    try {
+                        val ds = dataSources.find { it.type == type }
+                        if (ds != null) {
+                            val result = ds.fetch(sources, context)
+                            // Record outcome per individual source
+                            for (source in sources) {
+                                if (source.id in result.failedSourceIds) {
+                                    sourceManager.recordFailure(
+                                        source.id,
+                                        result.errors.firstOrNull() ?: "Unknown error",
+                                    )
+                                } else {
+                                    sourceManager.recordSuccess(source.id)
+                                }
+                            }
+                            result
+                        } else {
+                            DataFetchResult(emptyList(), listOf("No handler for source type: $type"), type)
+                        }
+                    } catch (e: Exception) {
+                        val errorMsg = "${type.name}: ${e.message ?: e::class.simpleName}"
+                        for (source in sources) {
+                            sourceManager.recordFailure(source.id, errorMsg)
+                        }
+                        DataFetchResult(emptyList(), listOf(errorMsg), type)
+                    }
+                }
+            }.awaitAll()
+        }
+
+        return results.flatMap { it.articles } to results.flatMap { it.errors }
+    }
+
+    internal fun selectRoundRobin(articles: List<Article>, limit: Int): List<Article> {
+        val bySource = articles.groupBy { it.sourceId }
+        val sourceQueues = bySource.values
+            .map { it.sortedByDescending { a -> a.fetchedAt }.toMutableList() }
+            .sortedByDescending { it.size }
+        val result = mutableListOf<Article>()
+        var idx = 0
+        while (result.size < limit && sourceQueues.any { it.isNotEmpty() }) {
+            val queue = sourceQueues[idx % sourceQueues.size]
+            if (queue.isNotEmpty()) {
+                result.add(queue.removeFirst())
+            }
+            idx++
+        }
+        return result
+    }
+
+    companion object {
+        const val LLM_CONCURRENCY = 3
+    }
+}
+
+data class PipelineResult(
+    val fetched: Int,
+    val enriched: Int = 0,
+    val embedded: Int = 0,
+    val analyzed: Int,
+    val scored: Int,
+    val digest: Digest?,
+    val scoredArticles: List<Article> = emptyList(),
+    val fetchErrors: List<String> = emptyList(),
+    val duplicatesRemoved: Int = 0,
+    val sparkKeywords: Set<String> = emptySet(),
+    val archivedCount: Int = 0,
+)

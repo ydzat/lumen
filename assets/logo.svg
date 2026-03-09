@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2D1B69"/>
+      <stop offset="50%" style="stop-color:#4834D4"/>
+      <stop offset="100%" style="stop-color:#6C5CE7"/>
+    </linearGradient>
+    <linearGradient id="accent2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A29BFE"/>
+      <stop offset="100%" style="stop-color:#6C5CE7"/>
+    </linearGradient>
+    <linearGradient id="gold2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFEAA7"/>
+      <stop offset="100%" style="stop-color:#FDCB6E"/>
+    </linearGradient>
+    <filter id="glow2">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg2)"/>
+  <!-- Stylized "L" shape with light emanating -->
+  <path d="M160 100 L160 340 L352 340"
+        fill="none" stroke="url(#gold2)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"
+        filter="url(#glow2)"/>
+  <!-- Light particles radiating from the corner of L -->
+  <g filter="url(#glow2)">
+    <circle cx="352" cy="340" r="8" fill="#FFEAA7" opacity="0.9"/>
+    <circle cx="380" cy="310" r="5" fill="#FFEAA7" opacity="0.7"/>
+    <circle cx="390" cy="340" r="4" fill="#FFEAA7" opacity="0.5"/>
+    <circle cx="370" cy="280" r="3" fill="#FFEAA7" opacity="0.4"/>
+    <circle cx="395" cy="295" r="3" fill="#FFEAA7" opacity="0.3"/>
+    <circle cx="352" cy="265" r="3" fill="#FFEAA7" opacity="0.35"/>
+  </g>
+  <!-- Subtle orbit ring suggesting AI/tech -->
+  <ellipse cx="280" cy="250" rx="120" ry="50" fill="none" stroke="#A29BFE" stroke-width="1.5" opacity="0.3" transform="rotate(-25 280 250)"/>
+  <ellipse cx="280" cy="250" rx="90" ry="35" fill="none" stroke="#A29BFE" stroke-width="1" opacity="0.2" transform="rotate(15 280 250)"/>
+  <!-- Small dot on orbit -->
+  <circle cx="370" cy="215" r="4" fill="#A29BFE" opacity="0.6"/>
+  <!-- Text -->
+  <text x="256" y="430" font-family="'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="48" font-weight="300" fill="white" text-anchor="middle" letter-spacing="12" opacity="0.9">LUMEN</text>
+</svg>
