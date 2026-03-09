@@ -280,6 +280,23 @@ lumen/
 - 代码风格遵循 [Kotlin 编码约定](https://kotlinlang.org/docs/coding-conventions.html)
 - Issue 和 PR 请使用仓库提供的模板
 
+## 赞助 / Sponsor
+
+如果 Lumen 对你有帮助，欢迎支持项目开发：
+
+<p align="center">
+  <a href="https://ko-fi.com/ydzat">
+    <img src="https://img.shields.io/badge/Ko--fi-Support-ff5e5b?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-fi"/>
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://afdian.com/a/ydzat">
+    <img src="https://img.shields.io/badge/爱发电-赞助支持-946ce6?style=for-the-badge" alt="爱发电"/>
+  </a>
+</p>
+
+- **海外用户**：通过 [Ko-fi](https://ko-fi.com/ydzat) 赞助（支持 PayPal / 信用卡）
+- **国内用户**：通过[爱发电](https://afdian.com/a/ydzat)赞助（支持微信 / 支付宝）
+
 ## 许可证
 
 本项目基于 [AGPL-3.0](LICENSE) 许可证开源。

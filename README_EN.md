@@ -280,6 +280,23 @@ Issues and Pull Requests are welcome. Please follow these guidelines:
 - Code style follows [Kotlin coding conventions](https://kotlinlang.org/docs/coding-conventions.html)
 - Please use the issue and PR templates provided in the repository
 
+## Sponsor
+
+If Lumen is helpful to you, consider supporting the project:
+
+<p align="center">
+  <a href="https://ko-fi.com/ydzat">
+    <img src="https://img.shields.io/badge/Ko--fi-Support-ff5e5b?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-fi"/>
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://afdian.com/a/ydzat">
+    <img src="https://img.shields.io/badge/Afdian-Sponsor-946ce6?style=for-the-badge" alt="Sponsor on Afdian"/>
+  </a>
+</p>
+
+- **International**: Support via [Ko-fi](https://ko-fi.com/ydzat) (PayPal / Credit Card)
+- **China**: Support via [Afdian](https://afdian.com/a/ydzat) (WeChat Pay / Alipay)
+
 ## License
 
 This project is licensed under [AGPL-3.0](LICENSE).
